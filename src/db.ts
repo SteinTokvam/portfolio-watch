@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AccessInfo, Account } from './types';
+import { AccessInfo, Account, Transaction } from './types';
 
 const db = new Database('database.db');
 db.pragma('journal_mode = WAL');
@@ -45,7 +45,14 @@ function initDb() {
         FOREIGN KEY(account_id) REFERENCES account(id)
         );
     `);
-    
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS equity_types (
+        id INTEGER PRIMARY KEY autoincrement,
+        name TEXT NOT NULL,
+        wanted_allocation REAL NOT NULL
+        );
+    `);
 }
 
 function initAccounts() {
@@ -93,4 +100,9 @@ export function getAccount(id: number) {
         res.access_info = access_info;
     }
     return res;
+}
+
+export function getTransactionsForAccount(account_id: number) {
+    const stmt = db.prepare('SELECT * FROM account_transaction WHERE account_id = ?');
+    return stmt.all(account_id) as Transaction[];
 }

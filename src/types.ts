@@ -22,6 +22,14 @@ export type KronValue = {
     return: number
 }
 
+export type TotalValue = {
+    account_name: string,
+    market_value: number
+    yield: number
+    return: number
+    equity_type: string
+}
+
 export type KronDevelopment = {
     data: {
         currency: string,
@@ -37,7 +45,7 @@ export type Holding = {
     value: number,
     goalPercentage: number,
     yield: number,
-    isin: number,
+    isin: string,
 }
 
 export type Transaction = {
