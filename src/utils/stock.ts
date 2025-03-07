@@ -1,4 +1,4 @@
-import { getTransactionsForAccount } from "../db";
+import { getTransactionsForAccount, getWantedAllocation } from "../db";
 import { Account, Holding, TotalValue, Transaction } from "../types";
 
 async function fetchStockPrice(ticker: string): Promise<number> {
@@ -58,7 +58,7 @@ async function fetchAccountHoldings(account_id: number): Promise<Holding[]> {
       equityShare: total_shares,
       equityType: "STOCK",
       value,
-      goalPercentage: 20,
+      goalPercentage: getWantedAllocation("STOCK"),
       yield: totalYield,
       isin: ticker_id,
     } as Holding;

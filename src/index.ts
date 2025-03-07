@@ -1,4 +1,4 @@
-import { getAccount } from "./db";
+import { getAccount, getWantedAllocation } from "./db";
 import { Account, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
@@ -74,23 +74,8 @@ async function calculateTotalValue() {
   } as TotalValue;
 
   const total_value_account = all.map((account) => {
-    let wanted_share = 0;
-    switch (account.account_name) {
-      case "Kron":
-        wanted_share = 59;
-        break;
-      case "FundingPartner":
-        wanted_share = 8;
-        break;
-      case "Tangem":
-      case "Bare Bitcoin":
-        wanted_share = 13;
-        break;
-      case "Folkeinvest":
-      case "Nordnet":
-        wanted_share = 20;
-        break;
-    }
+    const wanted_share = getWantedAllocation(account.equity_type);
+    
     const difference = parseFloat(
       (
         wanted_share -

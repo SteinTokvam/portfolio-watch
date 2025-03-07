@@ -101,7 +101,7 @@ export async function fetchKronHoldings(accessKey: string, accountKey: number, a
                     name: res.security_name,
                     accountKey: accountKey,
                     equityShare: res.units,
-                    equityType: "Fund",
+                    equityType: "FUND",
                     value: res.market_value,
                     goalPercentage: 0,//TODO: kan finne målprosent i investmentPlan kall i kron
                     yield: res.profit,

@@ -96,3 +96,9 @@ export function getTransactionsForAccount(account_id: number) {
     const stmt = db.prepare('SELECT * FROM account_transaction WHERE account_id = ?');
     return stmt.all(account_id) as Transaction[];
 }
+
+export function getWantedAllocation(equity_type: string) {
+    const stmt = db.prepare('SELECT wanted_allocation FROM equity_types WHERE name = ?');
+    // @ts-ignore
+    return stmt.get(equity_type).wanted_allocation as number;
+}
