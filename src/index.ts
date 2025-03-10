@@ -7,6 +7,7 @@ import { fetchStockAccountTotalValue } from "./utils/stock";
 import { fetchTangemTotalValue } from "./utils/tangem";
 import { Console } from "console";
 import { Transform } from "stream";
+import express from "express";
 
 const kron = getAccount(1) as Account;
 const fundingPartner = getAccount(2) as Account;
@@ -134,10 +135,10 @@ async function calculateTotalValue() {
     total_value_equity_type.push({
       equity_type,
       market_value,
-      current_share: total_value_account
+      current_share: parseFloat((total_value_account
         .filter((account) => account.equity_type === equity_type)
         .map((account) => account.current_share)
-        .reduce((a: number, b: number) => a + b, 0),
+        .reduce((a: number, b: number) => a + b, 0).toFixed(2))),
       wanted_share,
       difference,
       max_diff_to_rebalance,
@@ -159,7 +160,23 @@ async function calculateTotalValue() {
   return total_value_equity_type
 }
 
-calculateTotalValue().then(_ => {
+const app = express()
+const port = 3000
+
+app.get('/total_value', (req, res) => {
+  console.log('Calculating total value')
+  calculateTotalValue().then(total => {
+    res.send(total)
+  }); 
+})
+
+app.get('/limit', (req, res) => {
+  console.log('Calculating limit orders')
   console.log('\n\n')
-  deleteAndCreateLimitOrders(bareBitcoin.access_info?.password as string, bareBitcoin.access_info?.username as string, 4);
-});
+    deleteAndCreateLimitOrders(bareBitcoin.access_info?.password as string, bareBitcoin.access_info?.username as string, 4);
+    res.send('Limit orders created')
+})
+
+app.listen(port, () => {
+  console.log(`Listening on port ${port}`)
+})
