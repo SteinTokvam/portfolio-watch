@@ -1,6 +1,6 @@
 import { getAccount, getWantedAllocation } from "./db";
 import { Account, TotalValue } from "./types";
-import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
+import { deleteAndCreateLimitOrders, fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
 import { fetchKronTotalValue } from "./utils/kron";
 import { fetchStockAccountTotalValue } from "./utils/stock";
@@ -149,12 +149,17 @@ async function calculateTotalValue() {
   table(
     total_value_equity_type.sort((a, b) => a.market_value + b.market_value)
   );
+
   console.log(
     `Total value for my investments: ${total_value_equity_type
       .map((account) => account.market_value)
       .reduce((a, b) => a + b, 0)
       .toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}`
   );
+  return total_value_equity_type
 }
 
-calculateTotalValue();
+calculateTotalValue().then(_ => {
+  console.log('\n\n')
+  deleteAndCreateLimitOrders(bareBitcoin.access_info?.password as string, bareBitcoin.access_info?.username as string, 4);
+});

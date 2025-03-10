@@ -52,6 +52,16 @@ type BBComponents = {
   data: string;
 };
 
+type BBOpenOrder = {
+  orders: {
+    orderId: string;
+    type: "ORDER_TYPE_LIMIT" | "ORDER_TYPE_MARKET" | "ORDER_TYPE_UNSPECIFIED";
+    direction: "DIRECTION_BUY" | "DIRECTION_SELL" | "DIRECTION_UNSPECIFIED";
+    amount: number;
+    createdAt: string;
+  }[];
+};
+
 const baseUrl = "https://api.bb.no";
 
 export async function login(email: string, password: string): Promise<BBToken> {
@@ -75,19 +85,30 @@ const createOptions = (
   public_key: string,
   components: BBComponents
 ) => {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-bb-api-hmac": createHmac(secret_key, components),
+    "x-bb-api-nonce": components.nonce.toString(),
+    "x-bb-api-key": public_key,
+  };
+  if (components.method === "POST") {
+    return {
+      headers,
+      method: components.method,
+      body: components.data,
+    };
+  }
   return {
-    headers: {
-      "Content-Type": "application/json",
-      "x-bb-api-hmac": createHmac(secret_key, components),
-      "x-bb-api-nonce": components.nonce.toString(),
-      "x-bb-api-key": public_key,
-    },
+    headers,
+    method: components.method,
   };
 };
 
 export function createHmac(secret: string, components: BBComponents) {
   // Encode data: nonce and raw data
-  const encodedData = `${components.nonce}${components.data.toString()}`;
+  const encodedData = components.data
+    ? `${components.nonce}${components.data.toString()}`
+    : `${components.nonce}`;
 
   // SHA-256 hash of the encoded data
   const hashedData = crypto.createHash("sha256").update(encodedData).digest();
@@ -265,7 +286,7 @@ export async function fetchHoldings(
             accountKey,
             equityShare: item.availableBtc,
             equityType: "Cryptocurrency",
-            value: item.availableBtc*(price as number),
+            value: item.availableBtc * (price as number),
             yield: 0,
             isin: "BTC",
           } as Holding;
@@ -274,19 +295,26 @@ export async function fetchHoldings(
     });
 }
 
-export const fetchBareBitcoinTotalValue = async (accountKey: number,
-    secret_key: string,
-    public_key: string): Promise<TotalValue> => {
-    return await fetchHoldings(accountKey, secret_key, public_key)
-    .then(holdings => {
-        return {
-            account_name: "Bare Bitcoin",
-            market_value: Math.ceil(holdings.map(holding => holding.value).reduce((a, b) => a + b, 0)),
-            yield: 0,
-            return: Math.ceil(holdings.map(holding => holding.yield).reduce((a, b) => a + b, 0)),
-            equity_type: "CRYPTOCURRENCY"
-        } as TotalValue
-    })
+export const fetchBareBitcoinTotalValue = async (
+  accountKey: number,
+  secret_key: string,
+  public_key: string
+): Promise<TotalValue> => {
+  return await fetchHoldings(accountKey, secret_key, public_key).then(
+    (holdings) => {
+      return {
+        account_name: "Bare Bitcoin",
+        market_value: Math.ceil(
+          holdings.map((holding) => holding.value).reduce((a, b) => a + b, 0)
+        ),
+        yield: 0,
+        return: Math.ceil(
+          holdings.map((holding) => holding.yield).reduce((a, b) => a + b, 0)
+        ),
+        equity_type: "CRYPTOCURRENCY",
+      } as TotalValue;
+    }
+  );
 };
 
 export async function fetchLedger(secret_key: string, public_key: string) {
@@ -303,3 +331,95 @@ export async function fetchLedger(secret_key: string, public_key: string) {
     .then((response) => response.json())
     .then((response) => response);
 }
+
+function createLimitOrder(
+  secret_key: string,
+  public_key: string,
+  limit: number,
+  amount: number
+) {
+  const path = "/v1/orders";
+  const body = JSON.stringify({
+    type: "ORDER_TYPE_LIMIT",
+    direction: "DIRECTION_BUY",
+    amount,
+    price: limit,
+  });
+
+  return fetch(
+    `${baseUrl}${path}`,
+    createOptions(secret_key, public_key, {
+      method: "POST",
+      path,
+      nonce: new Date().getTime(),
+      data: body,
+    })
+  );
+}
+
+function fetchOpenOrders(secret_key: string, public_key: string) {
+  const path = "/v1/orders";
+  return fetch(
+    `${baseUrl}${path}`,
+    createOptions(secret_key, public_key, {
+      method: "GET",
+      path,
+      nonce: new Date().getTime(),
+      data: "",
+    } as BBComponents)
+  );
+}
+
+function timeout(func: () => void, index: number, numOfRuns: number) {
+  setTimeout(() => {
+    func()
+    if(index < numOfRuns) {
+      timeout(func, index+1, numOfRuns)
+    }
+  }, 1000)
+}
+
+function deleteAllLimitOrders(secret_key: string, public_key: string) {
+  return fetchOpenOrders(secret_key, public_key)
+    .then((response) => response.json())
+    .then((orders: BBOpenOrder) => {
+      timeout(() => {
+        const orderId = orders.orders.pop()?.orderId
+        const path = `/v1/orders/${orderId}`;
+          return fetch(
+            `${baseUrl}${path}`,
+            createOptions(secret_key, public_key, {
+              method: "DELETE",
+              path,
+              nonce: new Date().getTime(),
+            } as BBComponents)
+          ).then((res) => res.json())
+          .then(res => {
+            console.log(`Removed order ${orderId}.`)
+          });
+      }, 1, orders.orders.length)
+    });
+}
+
+export function deleteAndCreateLimitOrders(
+  secret_key: string,
+  public_key: string,
+  numberOfOrders: number
+) {
+  deleteAllLimitOrders(secret_key, public_key).then((res) => {
+    fetchPrice(false).then((price) => {
+      let limit = (price as BBPrice).ask;
+      timeout(() => {
+        limit = Math.ceil(limit * 0.93);
+        const amount = 25
+        createLimitOrder(secret_key, public_key, limit, amount)
+        .then(res => res.json())
+        .then(res => {
+          console.log(`Created limit order for ${amount}Kr at ${limit}Kr! - orderId: ${res.orderId}`)
+        });
+      }, 1, numberOfOrders)
+    });
+  });
+}
+
+
