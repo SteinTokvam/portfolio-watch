@@ -1,6 +1,9 @@
 import { getAccount, getWantedAllocation } from "./db";
 import { Account, TotalValue } from "./types";
-import { deleteAndCreateLimitOrders, fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
+import {
+  deleteAndCreateLimitOrders,
+  fetchBareBitcoinTotalValue,
+} from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
 import { fetchKronTotalValue } from "./utils/kron";
 import { fetchStockAccountTotalValue } from "./utils/stock";
@@ -8,6 +11,10 @@ import { fetchTangemTotalValue } from "./utils/tangem";
 import { Console } from "console";
 import { Transform } from "stream";
 import express from "express";
+import dotenv from "dotenv";
+import { Resend } from "resend";
+import path from "path";
+import { promises as fs } from 'fs';
 
 const kron = getAccount(1) as Account;
 const fundingPartner = getAccount(2) as Account;
@@ -76,7 +83,7 @@ async function calculateTotalValue() {
 
   const total_value_account = all.map((account) => {
     const wanted_share = getWantedAllocation(account.equity_type);
-    
+
     const difference = parseFloat(
       (
         wanted_share -
@@ -119,26 +126,34 @@ async function calculateTotalValue() {
       .filter((account) => account.equity_type === equity_type)
       .map((account) => account.total_value)
       .reduce((a: number, b: number) => a + b, 0);
-    const current_share = parseFloat((total_value_account
-      .filter((account) => account.equity_type === equity_type)
-      .map((account) => (account.total_value / total_value.market_value) * 100)
-      .reduce((a: number, b: number) => a + b, 0)).toFixed(2));
+    const current_share = parseFloat(
+      total_value_account
+        .filter((account) => account.equity_type === equity_type)
+        .map(
+          (account) => (account.total_value / total_value.market_value) * 100
+        )
+        .reduce((a: number, b: number) => a + b, 0)
+        .toFixed(2)
+    );
     const difference = parseFloat((wanted_share - current_share).toFixed(2));
     let rebalance = false;
     const toTrade = parseFloat(
       ((difference * total_value.market_value) / 100).toFixed(2)
     );
-    const max_diff_to_rebalance = wanted_share < 10 ? 3 : wanted_share*0.1;
+    const max_diff_to_rebalance = wanted_share < 10 ? 3 : wanted_share * 0.1;
     if (Math.abs(difference) >= max_diff_to_rebalance) {
       rebalance = true;
     }
     total_value_equity_type.push({
       equity_type,
       market_value,
-      current_share: parseFloat((total_value_account
-        .filter((account) => account.equity_type === equity_type)
-        .map((account) => account.current_share)
-        .reduce((a: number, b: number) => a + b, 0).toFixed(2))),
+      current_share: parseFloat(
+        total_value_account
+          .filter((account) => account.equity_type === equity_type)
+          .map((account) => account.current_share)
+          .reduce((a: number, b: number) => a + b, 0)
+          .toFixed(2)
+      ),
       wanted_share,
       difference,
       max_diff_to_rebalance,
@@ -157,26 +172,77 @@ async function calculateTotalValue() {
       .reduce((a, b) => a + b, 0)
       .toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}`
   );
-  return total_value_equity_type
+  return total_value_equity_type;
 }
 
-const app = express()
-const port = 3000
+dotenv.config();
+const app = express();
+const port = 3000;
 
-app.get('/total_value', (req, res) => {
-  console.log('Calculating total value')
-  calculateTotalValue().then(total => {
-    res.send(total)
-  }); 
-})
+const generateEmail = async (investments: any[], totalValue: number) => {
+  try {
+      // Les HTML-mal fra fil
+      const templatePath = path.join(__dirname, '../public/email.html');
+      let template = await fs.readFile(templatePath, 'utf-8');
 
-app.get('/limit', (req, res) => {
-  console.log('Calculating limit orders')
-  console.log('\n\n')
-    deleteAndCreateLimitOrders(bareBitcoin.access_info?.password as string, bareBitcoin.access_info?.username as string, 4);
-    res.send('Limit orders created')
-})
+      // Generer tabellrader dynamisk
+      const rows = investments.map(inv => `
+          <tr class="${inv.rebalance ? 'rebalance' : 'no-rebalance'}">
+              <td>${inv.equity_type}</td>
+              <td>${inv.market_value.toFixed(2)}</td>
+              <td>${inv.current_share}%</td>
+              <td>${inv.wanted_share}%</td>
+              <td>${inv.difference}%</td>
+              <td>${inv.rebalance ? 'Ja' : 'Nei'}</td>
+              <td>${inv.to_trade.toFixed(2)}</td>
+          </tr>
+      `).join('');
+
+      // Sett inn data i malen
+      template = template.replace("{{rows}}", rows).replace("{{totalValue}}", totalValue.toLocaleString("nb-NO", { style: "currency", currency: "NOK" })).replace("{{name}}", "Stein Petter");
+
+      return template;
+  } catch (error) {
+      console.error("Feil ved lesing av e-postmal:", error);
+      return ""; // Returnerer en tom streng ved feil
+  }
+};
+
+async function sendEmail(investments: any[]) {
+  const resend = new Resend(process.env.RESEND_API_KEY as string);
+  const { data, error } = await resend.emails.send({
+    from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
+    to: [process.env.EMAIL as string],
+    subject: "Porteføljeoppdatering",
+    html: await generateEmail(investments, investments.map(item => item.market_value).reduce((a, b) => a + b, 0)),
+  });
+  if(error){
+    console.log(error);
+  }
+  console.log(data);
+}
+
+app.get("/total_value", (req, res) => {
+  console.log("Calculating total value");
+  calculateTotalValue().then((total) => {
+    sendEmail(total);
+    res.send(total);
+  });
+});
+
+app.get("/limit", (req, res) => {
+  console.log("Calculating limit orders");
+  console.log("\n\n");
+  deleteAndCreateLimitOrders(
+    bareBitcoin.access_info?.password as string,
+    bareBitcoin.access_info?.username as string,
+    4
+  );
+  res.send("Limit orders created");
+});
+
+//resend_email();
 
 app.listen(port, () => {
-  console.log(`Listening on port ${port}`)
-})
+  console.log(`Listening on port ${port}`);
+});
