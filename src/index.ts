@@ -14,7 +14,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { Resend } from "resend";
 import path from "path";
-import { promises as fs } from 'fs';
+import { promises as fs } from "fs";
 
 const kron = getAccount(1) as Account;
 const fundingPartner = getAccount(2) as Account;
@@ -181,30 +181,47 @@ const port = 3000;
 
 const generateEmail = async (investments: any[], totalValue: number) => {
   try {
-      // Les HTML-mal fra fil
-      const templatePath = path.join(__dirname, '../public/email.html');
-      let template = await fs.readFile(templatePath, 'utf-8');
+    // Les HTML-mal fra fil
+    const templatePath = path.join(__dirname, "../public/email.html");
+    let template = await fs.readFile(templatePath, "utf-8");
 
-      // Generer tabellrader dynamisk
-      const rows = investments.map(inv => `
-          <tr class="${inv.rebalance ? 'rebalance' : 'no-rebalance'}">
+    // Generer tabellrader dynamisk
+    const rows = investments
+      .map(
+        (inv) => `
+          <tr class="${inv.rebalance ? "rebalance" : "no-rebalance"}">
               <td>${inv.equity_type}</td>
               <td>${inv.market_value.toFixed(2)}</td>
               <td>${inv.current_share}%</td>
               <td>${inv.wanted_share}%</td>
               <td>${inv.difference}%</td>
-              <td>${inv.rebalance ? 'Ja' : 'Nei'}</td>
+              <td>${inv.rebalance ? "Ja" : "Nei"}</td>
               <td>${inv.to_trade.toFixed(2)}</td>
           </tr>
-      `).join('');
+      `
+      )
+      .join("");
 
-      // Sett inn data i malen
-      template = template.replace("{{rows}}", rows).replace("{{totalValue}}", totalValue.toLocaleString("nb-NO", { style: "currency", currency: "NOK" })).replace("{{name}}", "Stein Petter");
+    // Sett inn data i malen
+    template = template
+      .replace("{{rows}}", rows)
+      .replace(
+        "{{totalValue}}",
+        totalValue.toLocaleString("nb-NO", {
+          style: "currency",
+          currency: "NOK",
+        })
+      )
+      .replace("{{name}}", "Stein Petter")
+      .replace(
+        "{{furthest}}",
+        investments.sort((a, b) => b.difference - a.difference)[0].equity_type
+      );
 
-      return template;
+    return template;
   } catch (error) {
-      console.error("Feil ved lesing av e-postmal:", error);
-      return ""; // Returnerer en tom streng ved feil
+    console.error("Feil ved lesing av e-postmal:", error);
+    return ""; // Returnerer en tom streng ved feil
   }
 };
 
@@ -214,9 +231,12 @@ async function sendEmail(investments: any[]) {
     from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
     to: [process.env.EMAIL as string],
     subject: "Porteføljeoppdatering",
-    html: await generateEmail(investments, investments.map(item => item.market_value).reduce((a, b) => a + b, 0)),
+    html: await generateEmail(
+      investments,
+      investments.map((item) => item.market_value).reduce((a, b) => a + b, 0)
+    ),
   });
-  if(error){
+  if (error) {
     console.log(error);
   }
   console.log(data);
