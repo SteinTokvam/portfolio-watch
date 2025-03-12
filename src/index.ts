@@ -1,4 +1,10 @@
-import { fetchLastTotalValue, getAccount, getAccounts, getWantedAllocation, updateLastTotalValue } from "./db";
+import {
+  fetchLastTotalValue,
+  getAccount,
+  getAccounts,
+  getWantedAllocation,
+  updateLastTotalValue,
+} from "./db";
 import { Account, TotalValue } from "./types";
 import {
   deleteAndCreateLimitOrders,
@@ -12,17 +18,9 @@ import { Console } from "console";
 import { Transform } from "stream";
 import express from "express";
 import dotenv from "dotenv";
-import { Resend } from "resend";
-import path from "path";
-import { promises as fs } from "fs";
+import { generateInvestmentSummaryEmail, sendEmail } from "./utils/resend";
 
 const accounts = getAccounts();
-const kron = getAccount(1) as Account;
-const fundingPartner = getAccount(2) as Account;
-const nordnet = getAccount(3) as Account;
-const tangem = getAccount(4) as Account;
-const folkeinvest = getAccount(5) as Account;
-const bareBitcoin = getAccount(6) as Account;
 
 function table(input: any) {
   const ts = new Transform({
@@ -49,21 +47,43 @@ accounts.forEach((account) => {
   console.log(account);
 });
 async function calculateTotalValue() {
-  const all: Promise<TotalValue>[] = []
+  const all: Promise<TotalValue>[] = [];
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
-    if(account.is_automatic) {
-      if(account.access_info?.access_key && account.access_info?.account_key) {
-        all.push(fetchKronTotalValue(account.access_info?.access_key as string, account.access_info?.account_key as string, 'total'));
-      } else if(account.access_info?.username && account.access_info?.password) {
-        if(account.account_type === 'Kryptovaluta') {
-          all.push(fetchBareBitcoinTotalValue(account.id, account.access_info?.password as string, account.access_info?.username as string));
+    if (account.is_automatic) {
+      if (account.access_info?.access_key && account.access_info?.account_key) {
+        all.push(
+          fetchKronTotalValue(
+            account.access_info?.access_key as string,
+            account.access_info?.account_key as string,
+            "total"
+          )
+        );
+      } else if (
+        account.access_info?.username &&
+        account.access_info?.password
+      ) {
+        if (account.account_type === "Kryptovaluta") {
+          all.push(
+            fetchBareBitcoinTotalValue(
+              account.id,
+              account.access_info?.password as string,
+              account.access_info?.username as string
+            )
+          );
         } else {
-          all.push(fetchFundingPartnerTotalValue(account.access_info?.username as string, account.access_info?.password as string, account.id, false));
+          all.push(
+            fetchFundingPartnerTotalValue(
+              account.access_info?.username as string,
+              account.access_info?.password as string,
+              account.id,
+              false
+            )
+          );
         }
       }
     } else {
-      if(account.account_type === 'Kryptovaluta') {
+      if (account.account_type === "Kryptovaluta") {
         all.push(fetchTangemTotalValue(account.id));
       } else {
         all.push(fetchStockAccountTotalValue(account));
@@ -161,7 +181,7 @@ async function calculateTotalValue() {
   });
 
   table(
-    total_value_equity_type.sort((a, b) => a.market_value + b.market_value)
+    total_value_equity_type.sort((a, b) => b.market_value - a.market_value)
   );
 
   console.log(
@@ -177,89 +197,32 @@ dotenv.config();
 const app = express();
 const port = 3000;
 
-const generateEmail = async (investments: any[], total_value: number, value_since_last: number) => {
-  try {
-    // Les HTML-mal fra fil
-    const templatePath = path.join(__dirname, "../public/email.html");
-    let template = await fs.readFile(templatePath, "utf-8");
-
-    // Generer tabellrader dynamisk
-    const rows = investments
-      .map(
-        (inv) => `
-          <tr class="${inv.rebalance ? "rebalance" : "no-rebalance"}">
-              <td>${inv.equity_type}</td>
-              <td>${inv.market_value.toFixed(2)}</td>
-              <td>${inv.current_share}%</td>
-              <td>${inv.wanted_share}%</td>
-              <td>${inv.difference}%</td>
-              <td>${inv.max_diff_to_rebalance}%</td>
-              <td>${inv.rebalance ? "Ja" : "Nei"}</td>
-              <td>${inv.to_trade.toFixed(2)}</td>
-          </tr>
-      `
-      )
-      .join("");
-
-    // Sett inn data i malen
-    template = template
-      .replace("{{rows}}", rows)
-      .replace(
-        "{{totalValue}}",
-        total_value.toLocaleString("nb-NO", {
-          style: "currency",
-          currency: "NOK",
-        })
-      )
-      .replace("{{name}}", "Stein Petter")
-      .replace(
-        "{{furthest}}",
-        investments.sort((a, b) => b.difference - a.difference)[0].equity_type
-      )
-      .replace(
-        "{{sinceLast}}" ,value_since_last.toLocaleString("nb-NO", {
-          style: "currency",
-          currency: "NOK"
-        })
-      );
-
-    return template;
-  } catch (error) {
-    console.error("Feil ved lesing av e-postmal:", error);
-    return ""; // Returnerer en tom streng ved feil
-  }
-};
-
-async function sendEmail(investments: any[]) {
-  const resend = new Resend(process.env.RESEND_API_KEY as string);
-  const total_value = investments.map((item) => item.market_value).reduce((a, b) => a + b, 0)
-  const value_since_last = fetchLastTotalValue();
-  updateLastTotalValue(total_value);
-  const { data, error } = await resend.emails.send({
-    from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
-    to: [process.env.EMAIL as string],
-    subject: "Porteføljeoppdatering",
-    html: await generateEmail(
-      investments,
-      total_value,
-      total_value-value_since_last.value
-    ),
-  });
-  if (error) {
-    console.log(error);
-  }
-  console.log(data);
-}
-
 app.get("/total_value", (req, res) => {
   console.log("Calculating total value");
   calculateTotalValue().then((total) => {
-    sendEmail(total);
+    const total_value = total
+      .map((item) => item.market_value)
+      .reduce((a, b) => a + b, 0);
+    const value_since_last = fetchLastTotalValue();
+    updateLastTotalValue(total_value);
+    generateInvestmentSummaryEmail(
+      total,
+      total_value,
+      total_value - value_since_last.value
+    ).then((email) => {
+      sendEmail({
+        from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
+        to: [process.env.EMAIL as string],
+        subject: "Porteføljeoppdatering",
+        html: email,
+      });
+    });
     res.send(total);
   });
 });
 
 app.get("/limit", (req, res) => {
+  const bareBitcoin = getAccount(6) as Account;
   console.log("Calculating limit orders");
   console.log("\n\n");
   deleteAndCreateLimitOrders(

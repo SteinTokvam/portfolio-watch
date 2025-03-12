@@ -65,4 +65,11 @@ export type ValueSinceLast = {
     value: number,
 }
 
+export type ResendEmail = {
+    from: string,
+    to: string[],
+    subject: string,
+    html: string
+}
+
 export type KronInterval = '1W' | '1M' | '3M' | '6M' | 'year-to-date' | '1Y' | '3Y' | '5Y' | 'total'
