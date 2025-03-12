@@ -1,4 +1,4 @@
-import { getAccount, getWantedAllocation } from "./db";
+import { fetchLastTotalValue, getAccount, getAccounts, getWantedAllocation, updateLastTotalValue } from "./db";
 import { Account, TotalValue } from "./types";
 import {
   deleteAndCreateLimitOrders,
@@ -16,6 +16,7 @@ import { Resend } from "resend";
 import path from "path";
 import { promises as fs } from "fs";
 
+const accounts = getAccounts();
 const kron = getAccount(1) as Account;
 const fundingPartner = getAccount(2) as Account;
 const nordnet = getAccount(3) as Account;
@@ -44,44 +45,41 @@ function table(input: any) {
   console.log(result);
 }
 
+accounts.forEach((account) => {
+  console.log(account);
+});
 async function calculateTotalValue() {
-  const kronTotalValue = await fetchKronTotalValue(
-    kron.access_info?.access_key as string,
-    kron.access_info?.account_key as string,
-    "total"
-  );
-  const fundingPartnerTotalValue = await fetchFundingPartnerTotalValue(
-    fundingPartner.access_info?.username as string,
-    fundingPartner.access_info?.password as string,
-    fundingPartner.id,
-    false
-  );
-  const bareBitcoinTotalValue = await fetchBareBitcoinTotalValue(
-    bareBitcoin.id,
-    bareBitcoin.access_info?.password as string,
-    bareBitcoin.access_info?.username as string
-  );
+  const all: Promise<TotalValue>[] = []
+  accounts.forEach((account) => {
+    console.log(`Fetching data for ${account.name}`);
+    if(account.is_automatic) {
+      if(account.access_info?.access_key && account.access_info?.account_key) {
+        all.push(fetchKronTotalValue(account.access_info?.access_key as string, account.access_info?.account_key as string, 'total'));
+      } else if(account.access_info?.username && account.access_info?.password) {
+        if(account.account_type === 'Kryptovaluta') {
+          all.push(fetchBareBitcoinTotalValue(account.id, account.access_info?.password as string, account.access_info?.username as string));
+        } else {
+          all.push(fetchFundingPartnerTotalValue(account.access_info?.username as string, account.access_info?.password as string, account.id, false));
+        }
+      }
+    } else {
+      if(account.account_type === 'Kryptovaluta') {
+        all.push(fetchTangemTotalValue(account.id));
+      } else {
+        all.push(fetchStockAccountTotalValue(account));
+      }
+    }
+  });
 
-  const tangemTotalValue = await fetchTangemTotalValue(tangem.id);
-  const folkeinvestTotalValue = await fetchStockAccountTotalValue(folkeinvest);
-  const nordnetTotalValue = await fetchStockAccountTotalValue(nordnet);
-
-  const all = [
-    kronTotalValue,
-    fundingPartnerTotalValue,
-    bareBitcoinTotalValue,
-    tangemTotalValue,
-    folkeinvestTotalValue,
-    nordnetTotalValue,
-  ];
+  const results = await Promise.all(all);
   const total_value = {
     account_name: "Total",
-    market_value: Math.ceil(all.reduce((a, b) => a + b.market_value, 0)),
-    yield: all.reduce((a, b) => a + b.yield, 0),
-    return: Math.ceil(all.reduce((a, b) => a + b.return, 0)),
+    market_value: Math.ceil(results.reduce((a, b) => a + b.market_value, 0)),
+    yield: results.reduce((a, b) => a + b.yield, 0),
+    return: Math.ceil(results.reduce((a, b) => a + b.return, 0)),
   } as TotalValue;
 
-  const total_value_account = all.map((account) => {
+  const total_value_account = results.map((account) => {
     const wanted_share = getWantedAllocation(account.equity_type);
 
     const difference = parseFloat(
@@ -179,7 +177,7 @@ dotenv.config();
 const app = express();
 const port = 3000;
 
-const generateEmail = async (investments: any[], totalValue: number) => {
+const generateEmail = async (investments: any[], total_value: number, value_since_last: number) => {
   try {
     // Les HTML-mal fra fil
     const templatePath = path.join(__dirname, "../public/email.html");
@@ -207,7 +205,7 @@ const generateEmail = async (investments: any[], totalValue: number) => {
       .replace("{{rows}}", rows)
       .replace(
         "{{totalValue}}",
-        totalValue.toLocaleString("nb-NO", {
+        total_value.toLocaleString("nb-NO", {
           style: "currency",
           currency: "NOK",
         })
@@ -216,6 +214,12 @@ const generateEmail = async (investments: any[], totalValue: number) => {
       .replace(
         "{{furthest}}",
         investments.sort((a, b) => b.difference - a.difference)[0].equity_type
+      )
+      .replace(
+        "{{sinceLast}}" ,value_since_last.toLocaleString("nb-NO", {
+          style: "currency",
+          currency: "NOK"
+        })
       );
 
     return template;
@@ -227,13 +231,17 @@ const generateEmail = async (investments: any[], totalValue: number) => {
 
 async function sendEmail(investments: any[]) {
   const resend = new Resend(process.env.RESEND_API_KEY as string);
+  const total_value = investments.map((item) => item.market_value).reduce((a, b) => a + b, 0)
+  const value_since_last = fetchLastTotalValue();
+  updateLastTotalValue(total_value);
   const { data, error } = await resend.emails.send({
     from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
     to: [process.env.EMAIL as string],
     subject: "Porteføljeoppdatering",
     html: await generateEmail(
       investments,
-      investments.map((item) => item.market_value).reduce((a, b) => a + b, 0)
+      total_value,
+      total_value-value_since_last.value
     ),
   });
   if (error) {

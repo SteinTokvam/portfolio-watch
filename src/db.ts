@@ -1,11 +1,10 @@
 import Database from 'better-sqlite3';
-import { AccessInfo, Account, Transaction } from './types';
+import { AccessInfo, Account, Transaction, ValueSinceLast } from './types';
 
 const db = new Database('database.db');
 db.pragma('journal_mode = WAL');
 
 initDb();
-//initAccounts();
 function initDb() {
     db.exec(`
         CREATE TABLE IF NOT EXISTS account (
@@ -53,6 +52,12 @@ function initDb() {
         wanted_allocation REAL NOT NULL
         );
     `);
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS value_since_last (
+        id INTEGER PRIMARY KEY autoincrement,
+        value REAL NOT NULL
+        );
+    `);
 }
 
 function insertAccessInfo(created_at: string, account_id: number, access_info: AccessInfo) {
@@ -92,6 +97,18 @@ export function getAccount(id: number) {
     return res;
 }
 
+export function getAccounts() {
+    const stmt = db.prepare('SELECT * FROM account');
+    const res = stmt.all() as Account[];
+    for(const account of res) {
+        if(account.is_automatic) {
+            const access_info = getAccessInfo(account.id);
+            account.access_info = access_info;
+        }
+    }
+    return res;
+}
+
 export function getTransactionsForAccount(account_id: number) {
     const stmt = db.prepare('SELECT * FROM account_transaction WHERE account_id = ?');
     return stmt.all(account_id) as Transaction[];
@@ -101,4 +118,14 @@ export function getWantedAllocation(equity_type: string) {
     const stmt = db.prepare('SELECT wanted_allocation FROM equity_types WHERE name = ?');
     // @ts-ignore
     return stmt.get(equity_type).wanted_allocation as number;
+}
+
+export function fetchLastTotalValue(){
+    const stmt = db.prepare('SELECT * FROM value_since_last');
+    return stmt.get() as ValueSinceLast;
+}
+
+export function updateLastTotalValue(total_value: number){
+    const stmt = db.prepare('UPDATE value_since_last SET value = ?');
+    stmt.run(total_value);
 }
