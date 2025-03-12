@@ -110,7 +110,7 @@ async function calculateTotalValue() {
       equity_type: account.equity_type,
     };
   });
-
+  table(total_value_account);
   const unique_equity_types = new Set([
     ...total_value_account.map((account) => account.equity_type),
   ]);
@@ -193,6 +193,7 @@ const generateEmail = async (investments: any[], total_value: number, value_sinc
               <td>${inv.current_share}%</td>
               <td>${inv.wanted_share}%</td>
               <td>${inv.difference}%</td>
+              <td>${inv.max_diff_to_rebalance}%</td>
               <td>${inv.rebalance ? "Ja" : "Nei"}</td>
               <td>${inv.to_trade.toFixed(2)}</td>
           </tr>
