@@ -189,7 +189,6 @@ function setCost(transaction: BBTransaction) {
       ).toFixed(2)
     );
   } else if (transaction.type === "BTC_BUY") {
-    console.log(transaction);
     return parseFloat(transaction.outAmount).toFixed(2);
   } else if (transaction.type === "BTC_BONUS") {
     return parseFloat(
@@ -302,7 +301,6 @@ export const fetchBareBitcoinTotalValue = async (
 ): Promise<TotalValue> => {
   return await fetchHoldings(accountKey, secret_key, public_key).then(
     (holdings) => {
-      console.log(holdings[0]);
       return {
         account_name: "Bare Bitcoin",
         market_value: parseFloat(holdings[0].value.toFixed(2)),//Math.ceil(holdings.map((holding) => holding.value).reduce((a, b) => a + b, 0)),

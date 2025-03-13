@@ -44,8 +44,14 @@ export type Holding = {
     equityType: string,
     value: number,
     goalPercentage: number,
+    currentPercentage?: number,
     yield: number,
     isin: string,
+}
+
+export type KronSummary = {
+    account: string,
+    holdings: Holding[]
 }
 
 export type Transaction = {

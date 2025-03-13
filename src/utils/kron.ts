@@ -1,4 +1,4 @@
-import { Holding, KronDevelopment, KronInterval, KronValue, TotalValue, Transaction } from "../types"
+import { Account, Holding, KronDevelopment, KronInterval, KronValue, TotalValue, Transaction } from "../types"
 
 function getOptions(api_key: string) {
     return {
@@ -29,6 +29,16 @@ async function getDevelopment(accessKey: string, account_id: string, interval: s
             }
             
     })
+    .catch((error) => {
+        console.error('Error:', error);
+        console.error('Kanskje access key er utgått?');
+        return {
+            data: {
+                currency: "NOK",
+                series: []
+            }
+        }
+    });
 }
 
 
@@ -67,6 +77,11 @@ export const fetchTransactions = (accessKey: string, accountKey: number, account
                 equity_type: "Fund",
             } 
         }))
+        .catch((error) => {
+            console.error('Error:', error);
+            console.error('Kanskje access key er utgått?');
+            return []
+        });
 
 export async function fetchKronTotalValue(accessKey: string, account_id: string, interval: KronInterval): Promise<TotalValue> {
     return await getDevelopment(accessKey, account_id, interval)
@@ -89,21 +104,21 @@ export async function fetchKronTotalValue(accessKey: string, account_id: string,
     })
 };
 
-export async function fetchKronHoldings(accessKey: string, accountKey: number, account_id: string): Promise<Holding[]> {
-    const lastValueInDevelopment = (await getDevelopment(accessKey, account_id, "1W")).data.series.pop()
+export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
+    const lastValueInDevelopment = (await getDevelopment(account.access_info?.access_key as string, account.access_info?.account_key as string, "1W")).data.series.pop()
     const totalValue = lastValueInDevelopment ? lastValueInDevelopment.market_value : 0
     
-    return await fetch(`https://kron.no/api/accounts/${account_id}/position-performances`, getOptions(accessKey))
+    return await fetch(`https://kron.no/api/accounts/${account.access_info?.account_key}/position-performances`, getOptions(account.access_info?.access_key as string))
         .then(response => response.json())
         .then(response => {
             const holdings = response.map((res: any) => {
                 return {
                     name: res.security_name,
-                    accountKey: accountKey,
+                    accountKey: account.id,
                     equityShare: res.units,
                     equityType: "FUND",
                     value: res.market_value,
-                    goalPercentage: 0,//TODO: kan finne målprosent i investmentPlan kall i kron
+                    goalPercentage: 0,//TODO: lagre i database og hent ut. trenger api nøkkel i tillegg til bearer token for å hente fra kron.. det gidder jeg ikke
                     yield: res.profit,
                     isin: res.isin,
                 }
@@ -112,16 +127,22 @@ export async function fetchKronHoldings(accessKey: string, accountKey: number, a
             if(holdings.reduce((a: any, b: any) => a + b.value, 0) < totalValue) {
                 holdings.push({
                     name: "Kontanter",
-                    accountKey: accountKey,
+                    accountKey: account.id,
                     equityShare: 1,
-                    equityType: "Fund",
+                    equityType: "FUND",
                     value: totalValue - holdings.reduce((a: any, b: any) => a + b.value, 0),
                     goalPercentage: 0,
                     yield: 0,
                     isin: "",
                 })
             }
-            return holdings
+            
+            return holdings.map((holding: Holding) => {
+                return {
+                    ...holding,
+                    currentPercentage: parseFloat(((holding.value/totalValue)*100).toFixed(2))
+                }
+            })
         })
 };
 
