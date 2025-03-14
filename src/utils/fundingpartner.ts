@@ -13,7 +13,7 @@ async function getTransactions(accountKey: number, token: string) {
     }
   )
     .then((res) => res.json())
-    .then((data) => {
+    .then((data: any) => {
       const filteredTransactions = data.message.payload.transList.filter(
         (fundingpartnerTransaction: any) =>
           fundingpartnerTransaction.classification !== "depositDomestic" || // innskudd til klientkonto
@@ -89,7 +89,7 @@ async function login(email: string, password: string) {
     }),
   })
     .then((res) => res.json())
-    .then((data) => data.token);
+    .then((data: any) => data.token);
 }
 
 export const fetchTransactions = async (

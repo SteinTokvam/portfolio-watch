@@ -1,34 +1,33 @@
+#!/usr/bin/env node
+import dotenv from "dotenv";
+dotenv.config();
 import {
   fetchLastTotalValue,
   getAccount,
   getAccounts,
   updateLastTotalValue,
 } from "./db";
-import { Account, Holding } from "./types";
+import { Account } from "./types";
 import {
   deleteAndCreateLimitOrders,
 } from "./utils/barebitcoin";
-import express from "express";
-import dotenv from "dotenv";
 import { generateInvestmentSummaryEmail, sendEmail } from "./utils/resend";
 import { calculateInvestmentSummary, calculateKronSummary } from "./investments";
-import { fetchKronHoldings } from "./utils/kron";
+import { program } from "commander";
+import inquirer from "inquirer";
 
-dotenv.config();
-const app = express();
-const port = 3000;
-
-app.get('/kron/summary', (req, res) => {
+function kronSummary() {
   const kronAccounts = getAccounts().filter(account => account.name.includes('Kron'))
   calculateKronSummary(kronAccounts)
   
-  res.send('Kron summary');
-});
+}
 
-app.get("/investment_summary", (req, res) => {
+console.log(process.env.DB_PATH);
+
+function createSummaryMail() {
   console.log("Creating investment summary...");
   const accounts = getAccounts();
-  calculateInvestmentSummary(accounts).then((total) => {
+  calculateInvestmentSummary(accounts, true).then((total) => {
     const total_value = total
       .map((item) => item.market_value)
       .reduce((a, b) => a + b, 0);
@@ -46,11 +45,10 @@ app.get("/investment_summary", (req, res) => {
         html: email,
       });
     });
-    res.send(total);
   });
-});
+};
 
-app.get("/limit", (req, res) => {
+function createLimitOrders() {
   const bareBitcoin = getAccount(6) as Account;
   console.log("Calculating limit orders");
   console.log("\n\n");
@@ -59,13 +57,31 @@ app.get("/limit", (req, res) => {
     bareBitcoin.access_info?.username as string,
     4
   );
-  res.send("Limit orders created");
-});
+};
 
-app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
-});
-
-if(process.argv[2] === '-is') {
-  calculateInvestmentSummary(getAccounts())
-}
+program
+.version('1.0.0')
+.description('Investment watcher')
+.action(() => {
+  inquirer
+    .prompt([
+      {
+        type: 'list',
+        name: 'summary',
+        message: 'Hva vil du gjøre?',
+        choices: ['investments', 'kron', 'limit', 'mail'],
+      },
+    ])
+    .then((answers) => {
+      if(answers.summary === 'investments') {
+        calculateInvestmentSummary(getAccounts())
+      } else if(answers.summary === 'mail') {
+        createSummaryMail();
+      } else if(answers.summary === 'kron') {
+        kronSummary();
+      } else if(answers.summary === 'limit') {
+        createLimitOrders();
+      }
+    });
+}).parse(process.argv);
+//program.parse(process.argv);

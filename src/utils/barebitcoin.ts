@@ -64,22 +64,6 @@ type BBOpenOrder = {
 
 const baseUrl = "https://api.bb.no";
 
-export async function login(email: string, password: string): Promise<BBToken> {
-  return await fetch(
-    "https://barebitcoin.no/connect/bb.v1alpha.AuthService/Login",
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    }
-  ).then((response) => response.json());
-}
-
 const createOptions = (
   secret_key: string,
   public_key: string,
@@ -210,7 +194,7 @@ export async function fetchPrice(
     },
   })
     .then((response) => response.json())
-    .then((response) => (onlyPrice ? response.price : response));
+    .then((response: BBPrice) => (onlyPrice ? response.price : response));
 }
 
 /*async function getPnl() {
@@ -411,7 +395,7 @@ export function deleteAndCreateLimitOrders(
         const amount = 25
         createLimitOrder(secret_key, public_key, limit, amount)
         .then(res => res.json())
-        .then(res => {
+        .then((res: any) => {
           console.log(`Created limit order for ${amount}Kr at ${limit}Kr! - orderId: ${res.orderId}`)
         });
       }, 1, numberOfOrders)

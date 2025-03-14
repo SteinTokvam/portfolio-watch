@@ -1,5 +1,5 @@
 import { Transform } from "stream";
-import { getWantedAllocation } from "./db";
+import { fetchLastTotalValue, getWantedAllocation, updateLastTotalValue } from "./db";
 import { Account, Holding, KronSummary, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
@@ -40,7 +40,7 @@ export async function calculateKronSummary(kronAccounts: Account[]) {
   return holdings;
 }
 
-export async function calculateInvestmentSummary(accounts: Account[]) {
+export async function calculateInvestmentSummary(accounts: Account[], email: boolean = false) {
   const all: Promise<TotalValue>[] = [];
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
@@ -124,7 +124,6 @@ export async function calculateInvestmentSummary(accounts: Account[]) {
       equity_type: account.equity_type,
     };
   });
-  table(total_value_account);
   const unique_equity_types = new Set([
     ...total_value_account.map((account) => account.equity_type),
   ]);
@@ -173,16 +172,17 @@ export async function calculateInvestmentSummary(accounts: Account[]) {
       to_trade: toTrade,
     });
   });
-
-  table(
-    total_value_equity_type.sort((a, b) => b.market_value - a.market_value)
-  );
-
-  console.log(
-    `Total value for my investments: ${total_value_equity_type
-      .map((account) => account.market_value)
-      .reduce((a, b) => a + b, 0)
-      .toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}`
-  );
+  if(!email) {
+    table(
+      total_value_equity_type.sort((a, b) => b.market_value - a.market_value)
+    );
+    console.log(
+      `Total value for my investments: ${total_value_equity_type
+        .map((account) => account.market_value)
+        .reduce((a, b) => a + b, 0)
+        .toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}. Change since last: ${(fetchLastTotalValue().value - total_value.market_value).toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}`
+    );
+    updateLastTotalValue(parseFloat((total_value.market_value).toFixed(2)));
+  } 
   return total_value_equity_type;
 }

@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { AccessInfo, Account, Transaction, ValueSinceLast } from './types';
 
-const db = new Database('database.db');
+const db = new Database(process.env.DB_PATH as string);
 db.pragma('journal_mode = WAL');
 
 initDb();

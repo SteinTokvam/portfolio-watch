@@ -9,7 +9,7 @@ async function fetchStockPrice(ticker: string): Promise<number> {
     `https://api.e24.no/bors/chart/${ticker}?period=1weeks&type=stock`
   )
     .then((res) => res.json())
-    .then((data) => {
+    .then((data: any) => {
       const ret = data.data.map((item: any) => {
         return item[1];
       });

@@ -9,13 +9,14 @@ async function readTemplateFile(email_path: string){
 }
 
 export async function sendEmail(email: ResendEmail) {
+    console.log("Sending email...");
     const resend = new Resend(process.env.RESEND_API_KEY as string);
   
     const { data, error } = await resend.emails.send(email as CreateEmailOptions);
     if (error) {
       console.log(error);
     }
-    console.log(data);
+    console.log(`Email sent - id: `, data?.id);
 }
 
   export const generateInvestmentSummaryEmail = async (

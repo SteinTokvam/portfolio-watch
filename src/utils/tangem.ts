@@ -18,7 +18,7 @@ export async function fetchHoldings(account_id: number): Promise<Holding[]> {
     0
   );
   const price = await fetchPrice(true) as number;
-  const value = total_shares * price
+  const value = parseFloat((total_shares * price).toFixed(2));
   return [
     {
       name: "BTC",

@@ -13,7 +13,7 @@ function getOptions(api_key: string) {
 async function getDevelopment(accessKey: string, account_id: string, interval: string): Promise<KronDevelopment> {
     return await fetch(`https://kron.no/api/v4/accounts/${account_id}/development?interval=${interval}`, getOptions(accessKey))
         .then(response => response.json())
-        .then(response => {
+        .then((response: any) => {
             return {
                 data: {
                     currency: response.data.currency,
@@ -44,7 +44,7 @@ async function getDevelopment(accessKey: string, account_id: string, interval: s
 
 export const fetchTransactions = (accessKey: string, accountKey: number, account_id: string): Promise<Transaction> => fetch(`https://kron.no/api/accounts/${account_id}/transactions`, getOptions(accessKey))
         .then(response => response.json())
-        .then(response => response
+        .then((response: any) => response
             .filter((res: any) => res.type !== 'DEP' && res.status !== 'PROCESSING')
             .map((res: any) => {
                 let type = ""
@@ -110,7 +110,7 @@ export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
     
     return await fetch(`https://kron.no/api/accounts/${account.access_info?.account_key}/position-performances`, getOptions(account.access_info?.access_key as string))
         .then(response => response.json())
-        .then(response => {
+        .then((response: any) => {
             const holdings = response.map((res: any) => {
                 return {
                     name: res.security_name,
