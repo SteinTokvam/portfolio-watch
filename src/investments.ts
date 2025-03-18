@@ -1,6 +1,6 @@
 import { Transform } from "stream";
 import { fetchLastTotalValue, getWantedAllocation, updateLastTotalValue } from "./db";
-import { Account, Holding, KronSummary, TotalValue } from "./types";
+import { Account, Holding, InvestmentSummary, KronSummary, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
 import { fetchKronHoldings, fetchKronTotalValue } from "./utils/kron";
@@ -40,7 +40,11 @@ export async function calculateKronSummary(kronAccounts: Account[]) {
   return holdings;
 }
 
-export async function calculateInvestmentSummary(accounts: Account[], email: boolean = false) {
+export function calculateMaxDiffToRebalance(wanted_share: number) {
+  return wanted_share < 10 ? 3 : wanted_share * 0.1;
+}
+
+export async function calculateInvestmentSummary(accounts: Account[], email: boolean = false): Promise<InvestmentSummary[]> {
   const all: Promise<TotalValue>[] = [];
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
@@ -128,7 +132,7 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
     ...total_value_account.map((account) => account.equity_type),
   ]);
 
-  const total_value_equity_type: any[] = [];
+  const total_value_equity_type: InvestmentSummary[] = [];
   unique_equity_types.forEach((equity_type: string) => {
     const wanted_share = total_value_account
       .filter((account) => account.equity_type === equity_type)
@@ -151,7 +155,7 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
     const toTrade = parseFloat(
       ((difference * total_value.market_value) / 100).toFixed(2)
     );
-    const max_diff_to_rebalance = wanted_share < 10 ? 3 : wanted_share * 0.1;
+    const max_diff_to_rebalance = calculateMaxDiffToRebalance(wanted_share);
     if (Math.abs(difference) >= max_diff_to_rebalance) {
       rebalance = true;
     }
@@ -182,7 +186,6 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
         .reduce((a, b) => a + b, 0)
         .toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}. Change since last: ${(fetchLastTotalValue().value - total_value.market_value).toLocaleString("nb-NO", { style: "currency", currency: "NOK" })}`
     );
-    updateLastTotalValue(parseFloat((total_value.market_value).toFixed(2)));
   } 
   return total_value_equity_type;
 }

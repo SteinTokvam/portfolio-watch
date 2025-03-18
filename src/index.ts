@@ -5,24 +5,66 @@ import {
   fetchLastTotalValue,
   getAccount,
   getAccounts,
+  updateAccountTotalValue,
   updateLastTotalValue,
 } from "./db";
-import { Account } from "./types";
+import { Account, Holding, InvestmentSummary } from "./types";
 import {
   deleteAndCreateLimitOrders,
 } from "./utils/barebitcoin";
 import { generateInvestmentSummaryEmail, sendEmail } from "./utils/resend";
-import { calculateInvestmentSummary, calculateKronSummary } from "./investments";
-import { program } from "commander";
-import inquirer from "inquirer";
+import { calculateInvestmentSummary, calculateKronSummary, calculateMaxDiffToRebalance } from "./investments";
+import { CronJob } from "cron";
 
-function kronSummary() {
-  const kronAccounts = getAccounts().filter(account => account.name.includes('Kron'))
-  calculateKronSummary(kronAccounts)
-  
+function generateKronSummaryEmail(holdings: Holding[], account: Account) {
+  const total_value = holdings.reduce((a, b) => a + b.value, 0);
+
+  generateInvestmentSummaryEmail(holdings.map(holding => {
+    const currentPercentage = holding.currentPercentage ? holding.currentPercentage : 0;
+    const difference = parseFloat((holding.goalPercentage - currentPercentage).toFixed(2));
+    let rebalance = false;
+    const max_diff_to_rebalance = calculateMaxDiffToRebalance(holding.goalPercentage);
+    if (Math.abs(difference) >= max_diff_to_rebalance) {
+      rebalance = true;
+    }
+    const to_trade = parseFloat(
+      ((difference * total_value) / 100).toFixed(2)
+    );
+    
+    return {
+      equity_type: holding.name,
+      market_value: holding.value,
+      current_share: holding.currentPercentage as number,
+      wanted_share: holding.goalPercentage,
+      difference,
+      max_diff_to_rebalance,
+      rebalance,
+      to_trade
+    } as InvestmentSummary
+  }), total_value, account.total_value-total_value)
+    .then((email) => {
+      updateAccountTotalValue(account.id, total_value);
+      sendEmail({
+        from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
+        to: [process.env.EMAIL as string],
+        subject: `${account.name} oppdatering`,
+        html: email,
+      })
+});
 }
 
-console.log(process.env.DB_PATH);
+function kronSummary() {
+  const kronAccounts = getAccounts().filter(account => account.is_automatic && account.access_info?.account_key);
+  calculateKronSummary(kronAccounts).then((result) => {
+    Promise.all(result).then((res) => {
+      res.forEach((item, index) => {
+        generateKronSummaryEmail(item, kronAccounts[index]);
+      });
+    }
+    );
+  }
+  );
+}
 
 function createSummaryMail() {
   console.log("Creating investment summary...");
@@ -41,7 +83,7 @@ function createSummaryMail() {
       sendEmail({
         from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
         to: [process.env.EMAIL as string],
-        subject: "Porteføljeoppdatering",
+        subject: "📈 Porteføljeoppdatering",
         html: email,
       });
     });
@@ -59,29 +101,15 @@ function createLimitOrders() {
   );
 };
 
-program
-.version('1.0.0')
-.description('Investment watcher')
-.action(() => {
-  inquirer
-    .prompt([
-      {
-        type: 'list',
-        name: 'summary',
-        message: 'Hva vil du gjøre?',
-        choices: ['investments', 'kron', 'limit', 'mail'],
-      },
-    ])
-    .then((answers) => {
-      if(answers.summary === 'investments') {
-        calculateInvestmentSummary(getAccounts())
-      } else if(answers.summary === 'mail') {
-        createSummaryMail();
-      } else if(answers.summary === 'kron') {
-        kronSummary();
-      } else if(answers.summary === 'limit') {
-        createLimitOrders();
-      }
-    });
-}).parse(process.argv);
-//program.parse(process.argv);
+const investmentSummaryJob = new CronJob(process.env.INVESTMENT_SUMMARY_CRON as string, createSummaryMail, null, false, "Europe/Oslo");
+const limitOrderJob = new CronJob(process.env.LIMIT_ORDER_CRON as string, createLimitOrders, null, false, "Europe/Oslo");
+const kronSummaryJob = new CronJob(process.env.KRON_SUMMARY_CRON as string, kronSummary, null, false, "Europe/Oslo");
+
+investmentSummaryJob.start();
+limitOrderJob.start();
+kronSummaryJob.start();
+
+console.log("Starting cron jobs");
+console.log("Investment summary job: ", investmentSummaryJob.nextDate());
+console.log("Limit order job: ", limitOrderJob.nextDate());
+console.log("Kron summary job: ", kronSummaryJob.nextDate());

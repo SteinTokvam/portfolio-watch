@@ -54,6 +54,17 @@ export type KronSummary = {
     holdings: Holding[]
 }
 
+export type InvestmentSummary = {
+    equity_type: string,
+    market_value: number,
+    current_share: number,
+    wanted_share: number,
+    difference: number,
+    max_diff_to_rebalance: number,
+    rebalance: boolean
+    to_trade: number
+}
+
 export type Transaction = {
     amount: number,
     name: string,

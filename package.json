@@ -7,7 +7,6 @@
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run build && node dist/index.js"
-
   },
   "author": "",
   "license": "ISC",
@@ -18,13 +17,9 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
-    "commander": "^13.1.0",
+    "cron": "^4.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "inquirer": "^12.4.3",
     "resend": "^4.1.2"
-  },
-  "bin": {
-    "portfolio": "./dist/index.js"
   }
 }

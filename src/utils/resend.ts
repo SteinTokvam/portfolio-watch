@@ -1,5 +1,5 @@
 import { CreateEmailOptions, Resend } from "resend";
-import { ResendEmail } from "../types";
+import { InvestmentSummary, ResendEmail } from "../types";
 import path from "path";
 import { promises as fs } from "fs";
 
@@ -20,9 +20,9 @@ export async function sendEmail(email: ResendEmail) {
 }
 
   export const generateInvestmentSummaryEmail = async (
-    investments: any[],
+    investments: InvestmentSummary[],
     total_value: number,
-    value_since_last: number
+    value_since_last: number,
   ) => {
     try {
       let template = await readTemplateFile('../../public/investmentSummaryTemplate.html')

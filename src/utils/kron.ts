@@ -1,3 +1,4 @@
+import { fetchKronHoldingGoalPercentage, insertKronGoalPercentage } from "../db";
 import { Account, Holding, KronDevelopment, KronInterval, KronValue, TotalValue, Transaction } from "../types"
 
 function getOptions(api_key: string) {
@@ -118,7 +119,7 @@ export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
                     equityShare: res.units,
                     equityType: "FUND",
                     value: res.market_value,
-                    goalPercentage: 0,//TODO: lagre i database og hent ut. trenger api nøkkel i tillegg til bearer token for å hente fra kron.. det gidder jeg ikke
+                    goalPercentage: fetchKronHoldingGoalPercentage(account, res.security_name),
                     yield: res.profit,
                     isin: res.isin,
                 }

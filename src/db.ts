@@ -58,6 +58,12 @@ function initDb() {
         value REAL NOT NULL
         );
     `);
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS kron_goal_percentage (
+        id INTEGER PRIMARY KEY autoincrement,
+        account_id INTEGER NOT NULL,
+        holding_name TEXT NOT NULL,
+        goal_percentage REAL NOT NULL)`)
 }
 
 function insertAccessInfo(created_at: string, account_id: number, access_info: AccessInfo) {
@@ -120,7 +126,7 @@ export function getWantedAllocation(equity_type: string) {
     return stmt.get(equity_type).wanted_allocation as number;
 }
 
-export function fetchLastTotalValue(){
+export function fetchLastTotalValue(){//TODO: oppdater til å differansiere mellom alle kontoer og forskjellige kron kontoer
     const stmt = db.prepare('SELECT * FROM value_since_last');
     return stmt.get() as ValueSinceLast;
 }
@@ -128,4 +134,19 @@ export function fetchLastTotalValue(){
 export function updateLastTotalValue(total_value: number){
     const stmt = db.prepare('UPDATE value_since_last SET value = ?');
     stmt.run(total_value);
+}
+
+export function insertKronGoalPercentage(account: Account, holding_name: string, goal_percentage: number) {
+    const stmt = db.prepare('INSERT INTO kron_goal_percentage (account_id, holding_name, goal_percentage) VALUES (?, ?, ?)');
+    stmt.run(account.id, holding_name, goal_percentage);
+}
+
+export function fetchKronHoldingGoalPercentage(account: Account, holding_name: string) {
+    const stmt = db.prepare('SELECT goal_percentage FROM kron_goal_percentage WHERE account_id = ? AND holding_name = ?');
+    return (stmt.get(account.id, holding_name) as any).goal_percentage as number;
+}
+
+export function updateAccountTotalValue(account_id: number, total_value: number) {
+    const stmt = db.prepare('UPDATE account SET total_value = ? WHERE id = ?');
+    stmt.run(total_value, account_id);
 }
