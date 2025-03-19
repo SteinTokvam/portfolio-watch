@@ -1,0 +1,32 @@
+name: Deploy Images to GHCR
+
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+      push-store-image:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: './Store'
+        steps:
+          - name: 'Checkout GitHub Action'
+            uses: actions/checkout@main
+
+          - name: 'Login to GitHub Container Registry'
+            uses: docker/login-action@v1
+            with:
+              registry: ghcr.io
+              username: ${{github.actor}}
+              password: ${{secrets.GITHUB_TOKEN}}
+
+          - name: 'Build Docker Image'
+            run: |
+              docker build . --tag ghcr.io/SteinTokvam/portfolio-watch:latest
+              docker push ghcr.io/SteinTokvam/portfolo-watch:latest
+
+

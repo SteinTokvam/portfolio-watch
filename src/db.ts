@@ -89,7 +89,7 @@ function parseAccessInfo(access_info: string): AccessInfo {
 }
 
 function getAccessInfo(account_id: number) {
-    const stmt = db.prepare('SELECT access_key, account_key, username, password FROM access_info WHERE account_id = ?');
+    const stmt = db.prepare('SELECT access_key, account_key, username, password, last_edited FROM access_info WHERE account_id = ?');
     return stmt.get(account_id) as AccessInfo;
 }
 

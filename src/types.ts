@@ -12,7 +12,8 @@ export type AccessInfo = {
     access_key: string | null,
     account_key: string | null,
     username: string | null, 
-    password: string | null
+    password: string | null,
+    last_edited: Date | null
 }
 
 export type KronValue = {
