@@ -25,7 +25,7 @@ jobs:
               password: ${{secrets.GCHR_KEY}}
 
           - name: 'Build Docker Image'
-            run: docker build -t ghcr.io/steintokvam/portfolio-watch:latest .
+            run: docker build --platform linux/arm64,linux/amd64 -t ghcr.io/steintokvam/portfolio-watch:latest .
 
           - name: 'Push image to GCHR'
             run: docker push ghcr.io/steintokvam/portfolio-watch:latest
