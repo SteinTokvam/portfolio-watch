@@ -26,7 +26,7 @@ jobs:
 
           - name: 'Build Docker Image'
             run: |
-              docker build . --tag ghcr.io/SteinTokvam/portfolio-watch:latest
-              docker push ghcr.io/SteinTokvam/portfolo-watch:latest
+              docker build . --tag ghcr.io/steintokvam/portfolio-watch:latest
+              docker push ghcr.io/steintokvam/portfolo-watch:latest
 
 
