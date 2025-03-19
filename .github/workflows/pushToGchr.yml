@@ -24,9 +24,11 @@ jobs:
               username: ${{github.actor}}
               password: ${{secrets.GCHR_KEY}}
 
-          - name: 'Build Docker Image'
-            run: |
-              docker build . --tag ghcr.io/steintokvam/portfolio-watch:latest
-              docker push ghcr.io/steintokvam/portfolo-watch:latest
+          - name: Bygg Docker-bildet
+            run: docker build -t ghcr.io/steintokvam/portfolo-watch:latest .
+
+          - name: Push Docker-bildet til GHCR
+            run: docker push ghcr.io/steintokvam/portfolo-watch:latest
+
 
 
