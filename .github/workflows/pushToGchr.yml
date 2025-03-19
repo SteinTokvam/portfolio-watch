@@ -24,12 +24,8 @@ jobs:
               username: ${{github.actor}}
               password: ${{secrets.GCHR_KEY}}
 
-          - name: Set up Docker Buildx
-            uses: docker/setup-buildx-action@v3
-            with:
-              platforms: linux/amd64,linux/arm64
           - name: 'Build Docker Image'
-            run: docker buildx build --platform linux/arm64,linux/amd64 -t ghcr.io/steintokvam/portfolio-watch:latest .
+            run: docker build -t ghcr.io/steintokvam/portfolio-watch:latest .
 
           - name: 'Push image to GCHR'
             run: docker push ghcr.io/steintokvam/portfolio-watch:latest
