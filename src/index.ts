@@ -43,7 +43,7 @@ function generateKronSummaryEmail(holdings: Holding[], account: Account) {
 
       return {
         equity_type: holding.name,
-        market_value: holding.value,
+        market_value: parseFloat(holding.value.toFixed(2)),
         current_share: holding.currentPercentage as number,
         wanted_share: holding.goalPercentage,
         difference,
