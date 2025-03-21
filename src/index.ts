@@ -53,7 +53,7 @@ function generateKronSummaryEmail(holdings: Holding[], account: Account) {
       } as InvestmentSummary;
     }),
     total_value,
-    account.total_value - total_value
+    total_value - account.total_value
   ).then((email) => {
     updateAccountTotalValue(account.id, total_value);
     sendEmail({
