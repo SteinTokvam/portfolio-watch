@@ -5,7 +5,7 @@ import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
 import { fetchKronHoldings, fetchKronTotalValue } from "./utils/kron";
 import { fetchStockAccountTotalValue } from "./utils/stock";
-import { fetchTangemTotalValue } from "./utils/tangem";
+import { fetchTangemTotalValue } from "./utils/btc";
 import { Console } from "console";
 
 function table(input: any) {
