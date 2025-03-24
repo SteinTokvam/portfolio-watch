@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Porteføljeoppdatering</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 2000px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; width: auto; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        .rebalance { background-color: #ffcccc; }
+        .no-rebalance { background-color: #ccffcc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Porteføljeoppdatering</h2>
+        <p>Hei <strong>{{name}}</strong>, her er en oppdatering om dine investeringer.</p>
+        <table>
+            <tr>
+                <th>Type</th>
+                <th>Markedsverdi</th>
+                <th>Nåværende %</th>
+                <th>Ønsket %</th>
+                <th>Differanse</th>
+                <th>Max differanse for rebalansering</th>
+                <th>Rebalansering nødvendig</th>
+                <th>Beløp å handle for</th>
+            </tr>
+            {{rows}}
+        </table>
+        <div style="margin-top: 20px;">
+            <div>
+                <p>Total verdi: <strong>{{totalValue}}</strong>. Det er en endring på <strong>{{sinceLast}}</strong> siden forrige gang.</p>
+                <p>Det er <strong>{{furthest}}</strong> som er lengst unna målallokeringen sin.</p>
+            </div>
+            <div>
+                <p>Maksimal differanse for rebalansering beregnes på følgende 2 måter:</p>
+            <ol>
+                <li> <i>ønsket fordeling < 10%</i></li>
+                <ul>
+                    <li>3%</li>
+                </ul>
+                <li> <i>ønsket fordeling > 10% </i></li>
+                <ul>
+                    <li>ønsket fordeling * 0.1</li>
+                </ul>
+            </ol>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

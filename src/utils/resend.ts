@@ -30,16 +30,19 @@ export async function sendEmail(email: ResendEmail) {
       const rows = investments
         .map(
           (inv) => `
-            <tr class="${inv.rebalance ? "rebalance" : "no-rebalance"}">
-                <td>${inv.equity_type}</td>
-                <td>${inv.market_value.toFixed(2)}</td>
-                <td>${inv.current_share}%</td>
-                <td>${inv.wanted_share}%</td>
-                <td>${inv.difference}%</td>
-                <td>${inv.max_diff_to_rebalance}%</td>
-                <td>${inv.rebalance ? "Ja" : "Nei"}</td>
-                <td>${inv.to_trade.toFixed(2)}</td>
-            </tr>
+            <div class="card ${inv.rebalance ? "rebalance" : "no-rebalance"}">
+              <div class="card-content">
+                <div class="underline">  
+                  <h2>${inv.equity_type}</h2>
+                </div>
+                <p>Markedsverdi: <strong>${inv.market_value.toFixed(2)}</strong></p>
+                <p>Nåværende allokering: <strong>${inv.current_share}%</strong></p>
+                <p>Ønsket allokering: <strong>${inv.wanted_share}%</strong></p>
+                <p>Nåværende differanse: <strong>${inv.difference}%</strong></p>
+                <p>Maksimum differanse: <strong>${inv.max_diff_to_rebalance}%</strong></p>
+                <p>Å handle for: <strong>${inv.to_trade.toFixed(2)}</strong></p>
+              </div>
+            </div>
         `
         )
         .join("");
