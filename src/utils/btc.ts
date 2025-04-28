@@ -38,6 +38,7 @@ export async function fetchTangemTotalValue(account_id: number): Promise<TotalVa
     .then(holdings => {
       return {
         account_name: "Tangem",
+        account_id: account_id,
         market_value: Math.ceil(holdings.map(holding => holding.value).reduce((a, b) => a + b, 0)),
         yield: 0,
         return: Math.ceil(holdings.map(holding => holding.yield).reduce((a, b) => a + b, 0)),

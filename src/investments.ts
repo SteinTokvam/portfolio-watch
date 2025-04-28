@@ -44,7 +44,7 @@ export function calculateMaxDiffToRebalance(wanted_share: number) {
   return wanted_share < 10 ? 3 : wanted_share * 0.1;
 }
 
-export async function calculateInvestmentSummary(accounts: Account[], email: boolean = false): Promise<InvestmentSummary[]> {
+export async function calculateAccountValues(accounts: Account[]) {
   const all: Promise<TotalValue>[] = [];
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
@@ -52,8 +52,7 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
       if (account.access_info?.access_key && account.access_info?.account_key) {
         all.push(
           fetchKronTotalValue(
-            account.access_info?.access_key as string,
-            account.access_info?.account_key as string,
+            account,
             "total"
           )
         );
@@ -88,8 +87,12 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
       }
     }
   });
+  return await Promise.all(all);
+}
 
-  const results = await Promise.all(all);
+export async function calculateInvestmentSummary(accounts: Account[], email: boolean = false): Promise<InvestmentSummary[]> {
+  const results = await calculateAccountValues(accounts);
+  
   const total_value = {
     account_name: "Total",
     market_value: Math.ceil(results.reduce((a, b) => a + b.market_value, 0)),

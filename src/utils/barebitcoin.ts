@@ -287,6 +287,7 @@ export const fetchBareBitcoinTotalValue = async (
     (holdings) => {
       return {
         account_name: "Bare Bitcoin",
+        account_id: accountKey,
         market_value: parseFloat(holdings[0].value.toFixed(2)),//Math.ceil(holdings.map((holding) => holding.value).reduce((a, b) => a + b, 0)),
         yield: 0,
         return: Math.ceil(

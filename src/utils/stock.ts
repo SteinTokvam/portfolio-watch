@@ -71,6 +71,7 @@ export async function fetchStockAccountTotalValue(
   return fetchAccountHoldings(account.id).then((holdings) => {
     return {
       account_name: account.name,
+      account_id: account.id,
       market_value: holdings.reduce((a: number, b: Holding) => a + b.value, 0),
       yield: 0,
       return: holdings.reduce((a: number, b: Holding) => a + b.yield, 0),

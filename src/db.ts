@@ -64,6 +64,17 @@ function initDb() {
         account_id INTEGER NOT NULL,
         holding_name TEXT NOT NULL,
         goal_percentage REAL NOT NULL)`)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS value_over_time (
+        id INTEGER PRIMARY KEY autoincrement,
+        account_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        value REAL NOT NULL,
+        FOREIGN KEY(account_id) REFERENCES account(id)
+        )`);
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_account_id_value_over_time ON value_over_time (account_id)`
+    );
 }
 
 function insertAccessInfo(created_at: string, account_id: number, access_info: AccessInfo) {
@@ -149,4 +160,9 @@ export function fetchKronHoldingGoalPercentage(account: Account, holding_name: s
 export function updateAccountTotalValue(account_id: number, total_value: number) {
     const stmt = db.prepare('UPDATE account SET total_value = ? WHERE id = ?');
     stmt.run(total_value, account_id);
+}
+
+export function setTotalValueFor(account_id: number, total_value: number) {
+    const stmt = db.prepare('INSERT INTO value_over_time (account_id, date, value) VALUES (?, ?, ?)');
+    stmt.run(account_id, new Date().toISOString(), total_value);
 }

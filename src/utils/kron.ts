@@ -113,23 +113,28 @@ export const fetchTransactions = (
     });
 
 export async function fetchKronTotalValue(
-  accessKey: string,
-  account_id: string,
+  account: Account,
   interval: KronInterval
 ): Promise<TotalValue> {
+
+  const accessKey = account.access_info?.access_key as string
+  const account_id = account.access_info?.account_key as string
+  
   return await getDevelopment(accessKey, account_id, interval).then(
     (response) => {
       const ret = response.data.series.pop();
       return ret
         ? {
-            account_name: "Kron",
+            account_name: account.name,
+            account_id: account.id,
             market_value: parseFloat(ret.market_value.toFixed(2)),
             yield: ret.yield,
             return: ret.return,
             equity_type: "FUND",
           }
         : ({
-            account_name: "Kron",
+            account_name: account.name,
+            account_id: account.id,
             market_value: 0,
             yield: 0,
             return: 0,

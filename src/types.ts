@@ -25,6 +25,7 @@ export type KronValue = {
 
 export type TotalValue = {
     account_name: string,
+    account_id: number,
     market_value: number
     yield: number
     return: number

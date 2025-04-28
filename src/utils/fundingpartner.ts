@@ -169,6 +169,7 @@ export const fetchFundingPartnerTotalValue = async (
       );
       return {
         account_name: "FundingPartner",
+        account_id: accountKey,
         market_value: Math.ceil(market_value),
         yield: 0,
         return: Math.ceil(return_value),

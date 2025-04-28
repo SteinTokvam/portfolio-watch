@@ -5,6 +5,7 @@ import {
   fetchLastTotalValue,
   getAccount,
   getAccounts,
+  setTotalValueFor,
   updateAccountTotalValue,
   updateLastTotalValue,
 } from "./db";
@@ -12,6 +13,7 @@ import { Account, Holding, InvestmentSummary } from "./types";
 import { deleteAndCreateLimitOrders } from "./utils/barebitcoin";
 import { generateInvestmentSummaryEmail, sendEmail } from "./utils/resend";
 import {
+  calculateAccountValues,
   calculateInvestmentSummary,
   calculateKronSummary,
   calculateMaxDiffToRebalance,
@@ -118,6 +120,23 @@ function createSummaryMail() {
   });
 }
 
+function calculateTotalValue() {
+  console.log("Calculating total value for all accounts...");
+  const accounts = getAccounts();
+  calculateAccountValues(accounts).then((total) => {
+    total.forEach((item) => {
+      if(item.account_id){
+        setTotalValueFor(item.account_id, item.market_value);
+      }
+    }
+    );
+  })
+  .catch((err) => {
+    console.log("Error calculating total value: ", err);
+  });
+  console.log("Total value for all accounts calculated.");
+}
+
 function createLimitOrders() {
   const bareBitcoin = getAccount(6) as Account;
   console.log("Calculating limit orders");
@@ -150,12 +169,21 @@ const kronSummaryJob = new CronJob(
   false,
   "Europe/Oslo"
 );
+const valueOverTimeJob = new CronJob(
+  process.env.VALUE_OVER_TIME_CRON as string,
+  calculateTotalValue,
+  null,
+  false,
+  "Europe/Oslo"
+);
 
 investmentSummaryJob.start();
 limitOrderJob.start();
 kronSummaryJob.start();
+valueOverTimeJob.start();
 
 console.log("Starting cron jobs");
 console.log("Investment summary job: ", investmentSummaryJob.nextDate());
 console.log("Limit order job: ", limitOrderJob.nextDate());
 console.log("Kron summary job: ", kronSummaryJob.nextDate());
+console.log("Value over time job: ", valueOverTimeJob.nextDate());
