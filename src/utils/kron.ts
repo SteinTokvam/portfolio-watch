@@ -1,17 +1,15 @@
-import { addDays } from "..";
 import {
   fetchKronHoldingGoalPercentage,
-  insertKronGoalPercentage,
 } from "../db";
 import {
   Account,
   Holding,
   KronDevelopment,
   KronInterval,
-  KronValue,
   TotalValue,
   Transaction,
 } from "../types";
+import { addDays } from "./functions";
 import { sendEmail } from "./resend";
 
 function getOptions(api_key: string) {
@@ -119,7 +117,7 @@ export async function fetchKronTotalValue(
 
   const accessKey = account.access_info?.access_key as string
   const account_id = account.access_info?.account_key as string
-  
+
   return await getDevelopment(accessKey, account_id, interval).then(
     (response) => {
       const ret = response.data.series.pop();
