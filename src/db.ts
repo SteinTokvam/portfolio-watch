@@ -131,6 +131,20 @@ export function getTransactionsForAccount(account_id: number) {
     return stmt.all(account_id) as Transaction[];
 }
 
+export function getAllTransactions() {
+    const stmt = db.prepare('SELECT * FROM account_transaction');
+    return stmt.all() as Transaction[];
+}
+
+export function deleteTransactionById(transaction_id: number) {
+    const stmt = db.prepare('DELETE FROM account_transaction WHERE id = ?');
+    const res = stmt.run(transaction_id);
+    if(res.changes === 0) {
+        return false;
+    }
+    return true;
+}
+
 export function getEquityType(equity_type: string): EquityType {
     const stmt = db.prepare('SELECT id, name, wanted_allocation FROM equity_types WHERE name = ?');
     return stmt.get(equity_type) as EquityType;
