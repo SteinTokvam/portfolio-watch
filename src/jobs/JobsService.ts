@@ -7,11 +7,20 @@ import { generateInvestmentSummaryEmail, sendEmail } from "../utils/resend";
 import { sendAccessKeyMail } from "../utils/kron";
 import { addDays } from "../utils/functions";
 
+enum JobType {
+    INVESTMENT_SUMMARY = "investment_summary",
+    BB_LIMIT_ORDER = "bb_limit_order",
+    KRON_SUMMARY = "kron_summary",
+    VALUE_OVER_TIME = "value_over_time",
+    UNKNOWN = "unknown"
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function generateKronSummaryEmail(holdings: Holding[], account: Account) {
+    logNextFiretime(JobType.INVESTMENT_SUMMARY);
     const total_value = holdings.reduce((a, b) => a + b.value, 0);
   
     generateInvestmentSummaryEmail(
@@ -58,6 +67,7 @@ function generateKronSummaryEmail(holdings: Holding[], account: Account) {
   }
 
 async function kronSummary() {
+    logNextFiretime(JobType.KRON_SUMMARY);
   const kronAccounts = getAccounts().filter(
     (account) => account.is_automatic && account.access_info?.account_key
   );
@@ -106,6 +116,7 @@ function createSummaryMail() {
 }
 
 function calculateTotalValue() {
+    logNextFiretime(JobType.VALUE_OVER_TIME);
   console.log("Calculating total value for all accounts...");
   const accounts = getAccounts();
   calculateAccountValues(accounts)
@@ -123,6 +134,7 @@ function calculateTotalValue() {
 }
 
 function createLimitOrders() {
+    logNextFiretime(JobType.BB_LIMIT_ORDER);
   const bareBitcoin = getAccount(6) as Account;
   console.log("Calculating limit orders");
   console.log("\n\n");
@@ -162,11 +174,24 @@ const valueOverTimeJob = new CronJob(
   "Europe/Oslo"
 );
 
-export function logNextFiretime() {
-    console.log("Investment summary job: ", investmentSummaryJob.nextDate());
-    console.log("Limit order job: ", limitOrderJob.nextDate());
-    console.log("Kron summary job: ", kronSummaryJob.nextDate());
-    console.log("Value over time job: ", valueOverTimeJob.nextDate());
+export function logNextFiretime(jobType: JobType) {
+    switch(jobType) {
+        case JobType.INVESTMENT_SUMMARY:
+            console.log("Investment summary job: ", investmentSummaryJob.nextDate()); break;
+        case JobType.BB_LIMIT_ORDER:
+            console.log("Limit order job: ", limitOrderJob.nextDate()); break;
+        case JobType.KRON_SUMMARY:
+            console.log("Kron summary job: ", kronSummaryJob.nextDate()); break;
+        case JobType.VALUE_OVER_TIME:
+            console.log("Value over time job: ", valueOverTimeJob.nextDate()); break;
+        case JobType.UNKNOWN:
+        default:
+            console.log("Investment summary job: ", investmentSummaryJob.nextDate());
+            console.log("Limit order job: ", limitOrderJob.nextDate());
+            console.log("Kron summary job: ", kronSummaryJob.nextDate());
+            console.log("Value over time job: ", valueOverTimeJob.nextDate());
+            break;
+    }
 }
 
 export function startJobs() {
@@ -175,5 +200,5 @@ export function startJobs() {
     kronSummaryJob.start();
     valueOverTimeJob.start();
 
-    logNextFiretime();
+    logNextFiretime(JobType.UNKNOWN);
 }

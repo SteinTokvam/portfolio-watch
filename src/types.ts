@@ -8,6 +8,12 @@ export type Account = {
     access_info: AccessInfo | null
 }
 
+export type EquityType = {
+    id: number,
+    name: string,
+    wanted_allocation: number,
+}
+
 export type AccessInfo = {
     access_key: string | null,
     account_key: string | null,

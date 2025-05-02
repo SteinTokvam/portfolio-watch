@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { AccessInfo, Account, Transaction, ValueSinceLast } from './types';
+import { AccessInfo, Account, EquityType, Transaction, ValueSinceLast } from './types';
 
 const db = new Database(process.env.DB_PATH as string);
 db.pragma('journal_mode = WAL');
@@ -131,10 +131,19 @@ export function getTransactionsForAccount(account_id: number) {
     return stmt.all(account_id) as Transaction[];
 }
 
-export function getWantedAllocation(equity_type: string) {
-    const stmt = db.prepare('SELECT wanted_allocation FROM equity_types WHERE name = ?');
-    // @ts-ignore
-    return stmt.get(equity_type).wanted_allocation as number;
+export function getEquityType(equity_type: string): EquityType {
+    const stmt = db.prepare('SELECT id, name, wanted_allocation FROM equity_types WHERE name = ?');
+    return stmt.get(equity_type) as EquityType;
+}
+
+export function updateEquityType(equity_type: string, wanted_allocation: number) {
+    const stmt = db.prepare('UPDATE equity_types SET wanted_allocation = ? WHERE name = ?');
+    stmt.run(wanted_allocation, equity_type);
+}
+
+export function getAllEquityTypes() {
+    const stmt = db.prepare('SELECT id, name, wanted_allocation FROM equity_types');
+    return stmt.all() as EquityType[];
 }
 
 export function fetchLastTotalValue(){//TODO: oppdater til å differansiere mellom alle kontoer og forskjellige kron kontoer

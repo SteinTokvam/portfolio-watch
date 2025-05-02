@@ -1,5 +1,5 @@
 import { Transform } from "stream";
-import { fetchLastTotalValue, getWantedAllocation, updateLastTotalValue } from "./db";
+import { fetchLastTotalValue, getEquityType, updateLastTotalValue } from "./db";
 import { Account, Holding, InvestmentSummary, KronSummary, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
@@ -101,7 +101,7 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
   } as TotalValue;
 
   const total_value_account = results.map((account) => {
-    const wanted_share = getWantedAllocation(account.equity_type);
+    const wanted_share = getEquityType(account.equity_type).wanted_allocation;
 
     const difference = parseFloat(
       (

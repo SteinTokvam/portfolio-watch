@@ -1,4 +1,4 @@
-import { getTransactionsForAccount, getWantedAllocation } from "../db";
+import { getTransactionsForAccount, getEquityType } from "../db";
 import { Holding, TotalValue, Transaction } from "../types";
 import { fetchPrice } from "./barebitcoin";
 
@@ -26,7 +26,7 @@ export async function fetchHoldings(account_id: number): Promise<Holding[]> {
       equityShare: total_shares,
       equityType: "CRYPTOCURRENCY",
       value,
-      goalPercentage: getWantedAllocation("CRYPTOCURRENCY"),
+      goalPercentage: getEquityType("CRYPTOCURRENCY").wanted_allocation,
       yield: total_yield,
       isin: "BTC",
     } as Holding,
