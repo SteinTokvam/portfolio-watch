@@ -1,18 +1,35 @@
 import { CronJob } from "cron";
-import { fetchLastTotalValue, getAccount, getAccounts, setTotalValueFor, updateAccountTotalValue, updateLastTotalValue } from "../db";
-import { calculateAccountValues, calculateInvestmentSummary, calculateKronSummary, calculateMaxDiffToRebalance } from "../investments";
+import {
+  deleteKronToken,
+  fetchLastTotalValue,
+  getAccount,
+  getAccounts,
+  getKronToken,
+  setKronToken,
+  setTotalValueFor,
+  updateAccountTotalValue,
+  updateLastTotalValue,
+} from "../db";
+import {
+  calculateAccountValues,
+  calculateInvestmentSummary,
+  calculateKronSummary,
+  calculateMaxDiffToRebalance,
+} from "../investments";
 import { Account, Holding, InvestmentSummary } from "../types";
 import { deleteAndCreateLimitOrders } from "../utils/barebitcoin";
 import { generateInvestmentSummaryEmail, sendEmail } from "../utils/resend";
 import { sendAccessKeyMail } from "../utils/kron";
 import { addDays } from "../utils/functions";
+import { refreshKronToken } from "../refreshTokenService";
 
 enum JobType {
-    INVESTMENT_SUMMARY = "investment_summary",
-    BB_LIMIT_ORDER = "bb_limit_order",
-    KRON_SUMMARY = "kron_summary",
-    VALUE_OVER_TIME = "value_over_time",
-    UNKNOWN = "unknown"
+  INVESTMENT_SUMMARY = "investment_summary",
+  BB_LIMIT_ORDER = "bb_limit_order",
+  KRON_SUMMARY = "kron_summary",
+  VALUE_OVER_TIME = "value_over_time",
+  KRON_REFRESH_TOKEN = "kron_refresh_token",
+  UNKNOWN = "unknown",
 }
 
 function sleep(ms: number) {
@@ -20,54 +37,54 @@ function sleep(ms: number) {
 }
 
 function generateKronSummaryEmail(holdings: Holding[], account: Account) {
-    logNextFiretime(JobType.INVESTMENT_SUMMARY);
-    const total_value = holdings.reduce((a, b) => a + b.value, 0);
-  
-    generateInvestmentSummaryEmail(
-      holdings.map((holding) => {
-        const currentPercentage = holding.currentPercentage
-          ? holding.currentPercentage
-          : 0;
-        const difference = parseFloat(
-          (holding.goalPercentage - currentPercentage).toFixed(2)
-        );
-        let rebalance = false;
-        const max_diff_to_rebalance = calculateMaxDiffToRebalance(
-          holding.goalPercentage
-        );
-        if (Math.abs(difference) >= max_diff_to_rebalance) {
-          rebalance = true;
-        }
-        const to_trade = parseFloat(
-          ((difference * total_value) / 100).toFixed(2)
-        );
-  
-        return {
-          equity_type: holding.name,
-          market_value: parseFloat(holding.value.toFixed(2)),
-          current_share: holding.currentPercentage as number,
-          wanted_share: holding.goalPercentage,
-          difference,
-          max_diff_to_rebalance,
-          rebalance,
-          to_trade,
-        } as InvestmentSummary;
-      }),
-      total_value,
-      total_value - account.total_value
-    ).then((email) => {
-      updateAccountTotalValue(account.id, total_value);
-      sendEmail({
-        from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
-        to: [process.env.EMAIL as string],
-        subject: `${account.name} oppdatering`,
-        html: email,
-      });
+  logNextFiretime(JobType.INVESTMENT_SUMMARY);
+  const total_value = holdings.reduce((a, b) => a + b.value, 0);
+
+  generateInvestmentSummaryEmail(
+    holdings.map((holding) => {
+      const currentPercentage = holding.currentPercentage
+        ? holding.currentPercentage
+        : 0;
+      const difference = parseFloat(
+        (holding.goalPercentage - currentPercentage).toFixed(2)
+      );
+      let rebalance = false;
+      const max_diff_to_rebalance = calculateMaxDiffToRebalance(
+        holding.goalPercentage
+      );
+      if (Math.abs(difference) >= max_diff_to_rebalance) {
+        rebalance = true;
+      }
+      const to_trade = parseFloat(
+        ((difference * total_value) / 100).toFixed(2)
+      );
+
+      return {
+        equity_type: holding.name,
+        market_value: parseFloat(holding.value.toFixed(2)),
+        current_share: holding.currentPercentage as number,
+        wanted_share: holding.goalPercentage,
+        difference,
+        max_diff_to_rebalance,
+        rebalance,
+        to_trade,
+      } as InvestmentSummary;
+    }),
+    total_value,
+    total_value - account.total_value
+  ).then((email) => {
+    updateAccountTotalValue(account.id, total_value);
+    sendEmail({
+      from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
+      to: [process.env.EMAIL as string],
+      subject: `${account.name} oppdatering`,
+      html: email,
     });
-  }
+  });
+}
 
 async function kronSummary() {
-    logNextFiretime(JobType.KRON_SUMMARY);
+  logNextFiretime(JobType.KRON_SUMMARY);
   const kronAccounts = getAccounts().filter(
     (account) => account.is_automatic && account.access_info?.account_key
   );
@@ -116,7 +133,7 @@ function createSummaryMail() {
 }
 
 function calculateTotalValue() {
-    logNextFiretime(JobType.VALUE_OVER_TIME);
+  logNextFiretime(JobType.VALUE_OVER_TIME);
   console.log("Calculating total value for all accounts...");
   const accounts = getAccounts();
   calculateAccountValues(accounts)
@@ -134,7 +151,7 @@ function calculateTotalValue() {
 }
 
 function createLimitOrders() {
-    logNextFiretime(JobType.BB_LIMIT_ORDER);
+  logNextFiretime(JobType.BB_LIMIT_ORDER);
   const bareBitcoin = getAccount(6) as Account;
   console.log("Calculating limit orders");
   console.log("\n\n");
@@ -143,6 +160,17 @@ function createLimitOrders() {
     bareBitcoin.access_info?.username as string,
     4
   );
+}
+
+function refreshKronTokenJob() {
+  logNextFiretime(JobType.KRON_REFRESH_TOKEN);
+  if (process.env.KRON_REFRESH_TOKEN && process.env.KRON_ACCESS_TOKEN) {
+    console.log("Env variables found. Setting tokens...");
+    deleteKronToken();
+    setKronToken(process.env.KRON_REFRESH_TOKEN, process.env.KRON_ACCESS_TOKEN);
+  } else {
+    refreshKronToken(getKronToken().refresh_token);
+  }
 }
 
 const investmentSummaryJob = new CronJob(
@@ -174,31 +202,60 @@ const valueOverTimeJob = new CronJob(
   "Europe/Oslo"
 );
 
+const refresh_kron_token_job = new CronJob(
+  process.env.KRON_REFRESH_TOKEN_CRON as string,
+  refreshKronTokenJob,
+  null,
+  false,
+  "Europe/Oslo"
+);
+
 export function logNextFiretime(jobType: JobType) {
-    switch(jobType) {
-        case JobType.INVESTMENT_SUMMARY:
-            console.log("Investment summary job: ", investmentSummaryJob.nextDate()); break;
-        case JobType.BB_LIMIT_ORDER:
-            console.log("Limit order job: ", limitOrderJob.nextDate()); break;
-        case JobType.KRON_SUMMARY:
-            console.log("Kron summary job: ", kronSummaryJob.nextDate()); break;
-        case JobType.VALUE_OVER_TIME:
-            console.log("Value over time job: ", valueOverTimeJob.nextDate()); break;
-        case JobType.UNKNOWN:
-        default:
-            console.log("Investment summary job: ", investmentSummaryJob.nextDate());
-            console.log("Limit order job: ", limitOrderJob.nextDate());
-            console.log("Kron summary job: ", kronSummaryJob.nextDate());
-            console.log("Value over time job: ", valueOverTimeJob.nextDate());
-            break;
-    }
+  switch (jobType) {
+    case JobType.INVESTMENT_SUMMARY:
+      console.log("Investment summary job: ", investmentSummaryJob.nextDate());
+      break;
+    case JobType.BB_LIMIT_ORDER:
+      console.log("Limit order job: ", limitOrderJob.nextDate());
+      break;
+    case JobType.KRON_SUMMARY:
+      console.log("Kron summary job: ", kronSummaryJob.nextDate());
+      break;
+    case JobType.VALUE_OVER_TIME:
+      console.log("Value over time job: ", valueOverTimeJob.nextDate());
+      break;
+    case JobType.KRON_REFRESH_TOKEN:
+      console.log(
+        "Kron refresh token job: ",
+        refresh_kron_token_job.nextDate()
+      );
+      break;
+    case JobType.UNKNOWN:
+    default:
+      console.log("Investment summary job: ", investmentSummaryJob.nextDate());
+      console.log("Limit order job: ", limitOrderJob.nextDate());
+      console.log("Kron summary job: ", kronSummaryJob.nextDate());
+      console.log("Value over time job: ", valueOverTimeJob.nextDate());
+      console.log(
+        "Kron refresh token job: ",
+        refresh_kron_token_job.nextDate()
+      );
+      break;
+  }
 }
 
-export function startJobs() {
-    investmentSummaryJob.start();
-    limitOrderJob.start();
-    kronSummaryJob.start();
-    valueOverTimeJob.start();
+export function startJobs(runImimediately = false) {
+  investmentSummaryJob.start();
+  limitOrderJob.start();
+  kronSummaryJob.start();
+  valueOverTimeJob.start();
+  refresh_kron_token_job.start();
+  if (runImimediately) {
+    //createSummaryMail();
+    createLimitOrders();
+    //kronSummary();
+    //calculateTotalValue();
+  }
 
-    logNextFiretime(JobType.UNKNOWN);
+  logNextFiretime(JobType.UNKNOWN);
 }

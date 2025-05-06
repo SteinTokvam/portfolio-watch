@@ -7,6 +7,7 @@ dotenv.config();
 import { startJobs } from "./jobs/JobsService";
 import { fetchAllEquityTypes, fetchEquityType, updateEquityTypeAllocation } from "./server/equity_types";
 import { deleteTransaction, fetchTransactions } from "./server/transactions";
+import { refreshKronToken } from "./refreshTokenService";
 
 const app = express();
 const port = process.env.PORT || 3000;

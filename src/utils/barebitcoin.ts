@@ -275,6 +275,10 @@ export async function fetchHoldings(
           } as Holding;
         });
       });
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      return [];
     });
 }
 
@@ -288,7 +292,7 @@ export const fetchBareBitcoinTotalValue = async (
       return {
         account_name: "Bare Bitcoin",
         account_id: accountKey,
-        market_value: parseFloat(holdings[0].value.toFixed(2)),//Math.ceil(holdings.map((holding) => holding.value).reduce((a, b) => a + b, 0)),
+        market_value: parseFloat(holdings[0].value.toFixed(2)), //Math.ceil(holdings.map((holding) => holding.value).reduce((a, b) => a + b, 0)),
         yield: 0,
         return: Math.ceil(
           holdings.map((holding) => holding.yield).reduce((a, b) => a + b, 0)
@@ -354,20 +358,21 @@ function fetchOpenOrders(secret_key: string, public_key: string) {
 
 function timeout(func: () => void, index: number, numOfRuns: number) {
   setTimeout(() => {
-    func()
-    if(index < numOfRuns) {
-      timeout(func, index+1, numOfRuns)
+    func();
+    if (index < numOfRuns) {
+      timeout(func, index + 1, numOfRuns);
     }
-  }, 1000)
+  }, 1000);
 }
 
 function deleteAllLimitOrders(secret_key: string, public_key: string) {
   return fetchOpenOrders(secret_key, public_key)
     .then((response) => response.json())
     .then((orders: BBOpenOrder) => {
-      timeout(() => {
-        const orderId = orders.orders.pop()?.orderId
-        const path = `/v1/orders/${orderId}`;
+      timeout(
+        () => {
+          const orderId = orders.orders.pop()?.orderId;
+          const path = `/v1/orders/${orderId}`;
           return fetch(
             `${baseUrl}${path}`,
             createOptions(secret_key, public_key, {
@@ -375,11 +380,15 @@ function deleteAllLimitOrders(secret_key: string, public_key: string) {
               path,
               nonce: new Date().getTime(),
             } as BBComponents)
-          ).then((res) => res.json())
-          .then(res => {
-            console.log(`Removed order ${orderId}.`)
-          });
-      }, 1, orders.orders.length)
+          )
+            .then((res) => res.json())
+            .then((res) => {
+              console.log(`Removed order ${orderId}.`);
+            });
+        },
+        1,
+        orders.orders.length
+      );
     });
 }
 
@@ -391,17 +400,21 @@ export function deleteAndCreateLimitOrders(
   deleteAllLimitOrders(secret_key, public_key).then((res) => {
     fetchPrice(false).then((price) => {
       let limit = (price as BBPrice).ask;
-      timeout(() => {
-        limit = Math.ceil(limit * 0.93);
-        const amount = 25
-        createLimitOrder(secret_key, public_key, limit, amount)
-        .then(res => res.json())
-        .then((res: any) => {
-          console.log(`Created limit order for ${amount}Kr at ${limit}Kr! - orderId: ${res.orderId}`)
-        });
-      }, 1, numberOfOrders)
+      timeout(
+        () => {
+          limit = Math.ceil(limit * 0.93);
+          const amount = 25;
+          createLimitOrder(secret_key, public_key, limit, amount)
+            .then((res) => res.json())
+            .then((res: any) => {
+              console.log(
+                `Created limit order for ${amount}Kr at ${limit}Kr! - orderId: ${res.orderId}`
+              );
+            });
+        },
+        1,
+        numberOfOrders
+      );
     });
   });
 }
-
-

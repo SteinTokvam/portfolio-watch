@@ -1,6 +1,8 @@
 import {
   fetchKronHoldingGoalPercentage,
+  getKronToken,
 } from "../db";
+import { refreshKronToken } from "../refreshTokenService";
 import {
   Account,
   Holding,
@@ -12,24 +14,25 @@ import {
 import { addDays } from "./functions";
 import { sendEmail } from "./resend";
 
-function getOptions(api_key: string) {
-  return {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${api_key}`,
-    },
-  };
-}
+const getOptions = async () =>
+  refreshKronToken(getKronToken().refresh_token)
+  .then((token) => {
+    return {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `${token.token_type} ${token.access_token}`,
+      },
+    };
+  });
 
 async function getDevelopment(
-  accessKey: string,
   account_id: string,
   interval: string
 ): Promise<KronDevelopment> {
   return await fetch(
     `https://kron.no/api/v4/accounts/${account_id}/development?interval=${interval}`,
-    getOptions(accessKey)
+    await getOptions()
   )
     .then((response) => response.json())
     .then((response: any) => {
@@ -59,14 +62,13 @@ async function getDevelopment(
     });
 }
 
-export const fetchTransactions = (
-  accessKey: string,
+export const fetchTransactions = async (
   accountKey: number,
   account_id: string
 ): Promise<Transaction> =>
   fetch(
     `https://kron.no/api/accounts/${account_id}/transactions`,
-    getOptions(accessKey)
+    await getOptions()
   )
     .then((response) => response.json())
     .then((response: any) =>
@@ -115,10 +117,9 @@ export async function fetchKronTotalValue(
   interval: KronInterval
 ): Promise<TotalValue> {
 
-  const accessKey = account.access_info?.access_key as string
   const account_id = account.access_info?.account_key as string
 
-  return await getDevelopment(accessKey, account_id, interval).then(
+  return await getDevelopment(account_id, interval).then(
     (response) => {
       const ret = response.data.series.pop();
       return ret
@@ -165,7 +166,6 @@ export function sendAccessKeyMail(kronAccount: Account) {
 export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
   const lastValueInDevelopment = (
     await getDevelopment(
-      account.access_info?.access_key as string,
       account.access_info?.account_key as string,
       "1W"
     )
@@ -176,7 +176,7 @@ export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
 
   return await fetch(
     `https://kron.no/api/accounts/${account.access_info?.account_key}/position-performances`,
-    getOptions(account.access_info?.access_key as string)
+    await getOptions()
   )
     .then((response) => response.json())
     .then((response: any) => {
@@ -219,12 +219,4 @@ export async function fetchKronHoldings(account: Account): Promise<Holding[]> {
         };
       });
     });
-}
-
-export async function fetchDevelopment(
-  accessKey: string,
-  account_id: string,
-  interval: string
-): Promise<KronDevelopment> {
-  return await getDevelopment(accessKey, account_id, interval);
 }
