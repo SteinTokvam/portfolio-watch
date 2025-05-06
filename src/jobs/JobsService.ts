@@ -49,9 +49,7 @@ function generateKronSummaryEmail(holdings: Holding[], account: Account) {
         (holding.goalPercentage - currentPercentage).toFixed(2)
       );
       let rebalance = false;
-      const max_diff_to_rebalance = calculateMaxDiffToRebalance(
-        holding.goalPercentage
-      );
+      const max_diff_to_rebalance = calculateMaxDiffToRebalance();
       if (Math.abs(difference) >= max_diff_to_rebalance) {
         rebalance = true;
       }
@@ -88,16 +86,7 @@ async function kronSummary() {
   const kronAccounts = getAccounts().filter(
     (account) => account.is_automatic && account.access_info?.account_key
   );
-  if (kronAccounts.length > 0 && kronAccounts[0].access_info?.last_edited) {
-    if (
-      addDays(
-        new Date(kronAccounts[0].access_info.last_edited),
-        80
-      ).getMonth() === new Date().getMonth()
-    ) {
-      sendAccessKeyMail(kronAccounts[0]);
-      await sleep(1000);
-    }
+  if (kronAccounts.length > 0) {
     calculateKronSummary(kronAccounts).then((result) => {
       Promise.all(result).then((res) => {
         res.forEach((item, index) => {

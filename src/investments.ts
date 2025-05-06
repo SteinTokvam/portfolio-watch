@@ -40,8 +40,8 @@ export async function calculateKronSummary(kronAccounts: Account[]) {
   return holdings;
 }
 
-export function calculateMaxDiffToRebalance(wanted_share: number) {
-  return wanted_share < 10 ? 3 : wanted_share * 0.1;
+export function calculateMaxDiffToRebalance() {
+  return 2.5;
 }
 
 export async function calculateAccountValues(accounts: Account[]) {
@@ -158,7 +158,7 @@ export async function calculateInvestmentSummary(accounts: Account[], email: boo
     const toTrade = parseFloat(
       ((difference * total_value.market_value) / 100).toFixed(2)
     );
-    const max_diff_to_rebalance = calculateMaxDiffToRebalance(wanted_share);
+    const max_diff_to_rebalance = calculateMaxDiffToRebalance();
     if (Math.abs(difference) >= max_diff_to_rebalance) {
       rebalance = true;
     }
