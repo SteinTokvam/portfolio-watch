@@ -254,10 +254,7 @@ export function setTotalValueFor(account_id: number, total_value: number) {
   stmt.run(account_id, new Date().toISOString(), total_value);
 }
 
-export function setKronToken(
-  refresh_token: string,
-  access_token: string
-) {
+export function setKronToken(refresh_token: string, access_token: string) {
   const stmt = db.prepare(
     "INSERT INTO kron_refresh_token (refresh_token, access_token) VALUES (?, ?)"
   );
@@ -271,17 +268,21 @@ export function deleteKronToken() {
   console.log("Kron token deleted");
 }
 
-export function updateToken(
-  refresh_token: string,
-  access_token: string
-) {
+export function updateToken(refresh_token: string, access_token: string) {
+  const oldToken = getKronToken();
   const stmt = db.prepare(
-    "UPDATE kron_refresh_token SET refresh_token = ?, access_token = ? WHERE id = 1"
+    "UPDATE kron_refresh_token SET refresh_token = ?, access_token = ? WHERE id = ?"
   );
-  stmt.run(refresh_token, access_token);
+  stmt.run(refresh_token, access_token, oldToken.id);
 }
 
 export function getKronToken() {
-    const stmt = db.prepare("SELECT access_token, refresh_token FROM kron_refresh_token");
-    return stmt.get() as { access_token: string, refresh_token: string };
+  const stmt = db.prepare(
+    "SELECT id, access_token, refresh_token FROM kron_refresh_token"
+  );
+  return stmt.get() as {
+    id: number;
+    access_token: string;
+    refresh_token: string;
+  };
 }

@@ -152,14 +152,8 @@ function createLimitOrders() {
 }
 
 function refreshKronTokenJob() {
-  logNextFiretime(JobType.KRON_REFRESH_TOKEN);
-  if (process.env.KRON_REFRESH_TOKEN && process.env.KRON_ACCESS_TOKEN) {
-    console.log("Env variables found. Setting tokens...");
-    deleteKronToken();
-    setKronToken(process.env.KRON_REFRESH_TOKEN, process.env.KRON_ACCESS_TOKEN);
-  } else {
-    refreshKronToken(getKronToken().refresh_token);
-  }
+  logNextFiretime(JobType.KRON_REFRESH_TOKEN);  
+  refreshKronToken(getKronToken().refresh_token);
 }
 
 const investmentSummaryJob = new CronJob(
