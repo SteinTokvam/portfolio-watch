@@ -21,6 +21,8 @@ export async function refreshKronToken(refresh_token: string): Promise<KronToken
             console.log('Token refreshed successfully');
             return response.json();
         }
+        console.error('Failed to refresh token:', response.status);
+        console.error('Response:', response.json());
         throw new Error('Failed to refresh token');
     })
     .then(token => {
