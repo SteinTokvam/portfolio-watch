@@ -15,6 +15,7 @@ FROM node:20.0.0-bullseye-slim
 WORKDIR /app
 COPY --from=BUILD_IMAGE /app/dist ./dist
 COPY --from=BUILD_IMAGE /app/node_modules ./node_modules
+COPY --from=BUILD_IMAGE /app/public ./public
 ENV NODE_ENV production
 RUN chown -R node:node /app/dist
 
