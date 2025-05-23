@@ -73,6 +73,7 @@ export type InvestmentSummary = {
 }
 
 export type Transaction = {
+    transaction_id: number,
     amount: number,
     name: string,
     transaction_type: string,
