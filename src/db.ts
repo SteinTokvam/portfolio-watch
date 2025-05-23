@@ -228,9 +228,10 @@ export function insertTransactionInDb(
   transaction: Transaction,
 ) {
   const stmt = db.prepare(
-    "INSERT INTO account_transaction (amount, name, transaction_type, transaction_date, unit_price, ticker_id, total_shares, equity_type, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO account_transaction (created_at, amount, name, transaction_type, transaction_date, unit_price, ticker_id, total_shares, equity_type, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
   stmt.run(
+    transaction.transaction_date,
     transaction.amount,
     transaction.name,
     transaction.transaction_type,
@@ -325,7 +326,10 @@ export function fetchKronHoldingGoalPercentage(
   const stmt = db.prepare(
     "SELECT goal_percentage FROM kron_goal_percentage WHERE account_id = ? AND holding_name = ?"
   );
-  return (stmt.get(account.id, holding_name) as any).goal_percentage as number;
+  return {
+    holding_name,
+    goal_percentage: (stmt.get(account.id, holding_name) as any).goal_percentage as number
+  };
 }
 
 export function updateAccountTotalValue(

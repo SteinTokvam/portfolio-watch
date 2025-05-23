@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import { deleteTransactionById, getAllTransactions, getTransactionById, getTransactionsForAccount, insertTransactionInDb, updateTransactionInDb } from "../db";
 import { Transaction } from "../types";
+import { fetchPrice } from "../utils/barebitcoin";
 
-export function fetchTransactions(req: Request, res: Response) {
-  const transactions = getAllTransactions();
+export async function fetchTransactions(req: Request, res: Response) {
+  const price = await fetchPrice(true);
+  
+  const transactions = getAllTransactions()
   if(!transactions) {
     res.status(404).json({ error: "No transactions found" });
     return;

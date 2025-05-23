@@ -3,11 +3,11 @@ import { fetchAllEquityTypes, fetchEquityType, updateEquityTypeAllocation } from
 
 const equity_type_router = express.Router();
 
-equity_type_router.get("/equity_types", fetchAllEquityTypes);
+equity_type_router.get("/", fetchAllEquityTypes);
 
-equity_type_router.get("/equity_types/:name", fetchEquityType);
+equity_type_router.get("/:name", fetchEquityType);
 
-equity_type_router.post("/equity_types/:name/:allocation", updateEquityTypeAllocation);
+equity_type_router.post("/:name/:allocation", updateEquityTypeAllocation);
 
 
 export { equity_type_router };

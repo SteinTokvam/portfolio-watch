@@ -59,7 +59,7 @@ export async function calculateAccountValues(accounts: Account[]) {
         account.access_info?.username &&
         account.access_info?.password
       ) {
-        if (account.account_type === "Kryptovaluta") {
+        if (account.account_type === "CRYPTOCURRENCY") {
           all.push(
             fetchBareBitcoinTotalValue(
               account.id,
@@ -79,7 +79,7 @@ export async function calculateAccountValues(accounts: Account[]) {
         }
       }
     } else {
-      if (account.account_type === "Kryptovaluta") {
+      if (account.account_type === "CRYPTOCURRENCY") {
         all.push(fetchTangemTotalValue(account.id));
       } else {
         all.push(fetchStockAccountTotalValue(account));
