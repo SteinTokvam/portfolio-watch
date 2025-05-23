@@ -88,9 +88,10 @@ function initDb() {
         refresh_token TEXT NOT NULL,
         access_token TEXT NOT NULL
         )`);
+    db.exec(`DROP TABLE IF EXISTS value_over_time`);
 }
 
-function insertAccessInfo(
+export function insertAccessInfo(
   created_at: string,
   account_id: number,
   access_info: AccessInfo
@@ -107,7 +108,7 @@ function insertAccessInfo(
   );
 }
 
-export function insertAccount(
+export function insertAccountInDb(
   created_at: string,
   name: string,
   type: string,
@@ -128,6 +129,31 @@ export function insertAccount(
   }
 }
 
+export function updateAccountDb(account: Account) {
+    const stmt = db.prepare(
+        "UPDATE account SET name = ?, account_type = ?, total_value = ?, is_automatic = ? WHERE id = ?"
+    );
+    stmt.run(
+        account.name,
+        account.account_type,
+        account.total_value,
+        account.is_automatic ? 1 : 0,
+        account.id
+    );
+    if (account.is_automatic && account.access_info) {
+        insertAccessInfo(account.created_at, account.id, account.access_info);
+    }
+}
+
+export function deleteAccountInDb(id: number) {
+  const stmt = db.prepare("DELETE FROM account WHERE id = ?");
+  const res = stmt.run(id);
+  if (res.changes === 0) {
+    return false;
+  }
+  return true;
+}
+
 function parseAccessInfo(access_info: string): AccessInfo {
   const obj = JSON.parse(access_info);
   return obj as AccessInfo;
@@ -140,9 +166,21 @@ function getAccessInfo(account_id: number) {
   return stmt.get(account_id) as AccessInfo;
 }
 
+export function deleteAccessInfo(account_id: number) {
+  const stmt = db.prepare("DELETE FROM access_info WHERE account_id = ?");
+  const res = stmt.run(account_id);
+  if (res.changes === 0) {
+    return false;
+  }
+  return true;
+}
+
 export function getAccount(id: number) {
   const stmt = db.prepare("SELECT * FROM account WHERE id = ?");
   const res = stmt.get(id) as Account;
+    if (!res) {
+        return null;
+    }
   if (res.is_automatic) {
     const access_info = getAccessInfo(id);
     res.access_info = access_info;

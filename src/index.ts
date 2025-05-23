@@ -8,11 +8,14 @@ import { startJobs } from "./jobs/JobsService";
 import { fetchAllEquityTypes, fetchEquityType, updateEquityTypeAllocation } from "./server/equity_types";
 import { deleteTransaction, fetchTransactions } from "./server/transactions";
 import { setToken } from "./server/token";
+import { accountRouter } from "./server/routes/account";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const port = process.env.PORT || 3000;
+
+app.use('/accounts', accountRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
