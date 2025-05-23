@@ -1,6 +1,6 @@
 import { getTransactionsForAccount, getEquityType, fetchKronHoldingGoalPercentage } from "../db";
 import { calculateAccountValues } from "../investments";
-import { Account, Holding, TotalValue, Transaction } from "../types";
+import { Account, Holding, KronRebalance, TotalValue, Transaction } from "../types";
 
 export async function fetchStockPrice(ticker: string, equity_type: string): Promise<number> {
   if (ticker === "Folkekraft") {
@@ -83,7 +83,7 @@ export async function fetchStockAccountTotalValue(
   });
 }
 
-export async function calculateKronRebalance(account: Account, new_money: number) {
+export async function calculateKronRebalance(account: Account, new_money: number): Promise<KronRebalance[]> {
   const transactions = getTransactionsForAccount(account.id)
   const goals = transactions.map(transaction => fetchKronHoldingGoalPercentage(account, transaction.name))
 
@@ -104,10 +104,10 @@ export async function calculateKronRebalance(account: Account, new_money: number
       return {
           name: transaction.name,
           goal_allocation,
-          value,
+          value: parseInt(value.toFixed(0)),
           current_allocation,
           diff_to_goal: goal_allocation - current_allocation,
-          to_buy: total_value*(goal_allocation/100)-value,
+          to_buy: parseInt((total_value*(goal_allocation/100)-value).toFixed(0)),
       }
   })
 }

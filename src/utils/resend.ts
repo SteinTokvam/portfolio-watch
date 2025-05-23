@@ -1,5 +1,5 @@
 import { CreateEmailOptions, Resend } from "resend";
-import { InvestmentSummary, ResendEmail } from "../types";
+import { InvestmentSummary, KronRebalance, ResendEmail } from "../types";
 import path from "path";
 import { promises as fs } from "fs";
 
@@ -89,3 +89,45 @@ export const generateInvestmentSummaryEmail = async (
     return "";
   }
 };
+
+export const generateKronRebalanceEmail = async (funds: KronRebalance[], total_value: number, new_money: string) => {
+  try {
+    let template = await readTemplateFile(
+      "../../public/kronRebalanceTemplate.html"
+    );
+
+    const rows = funds
+      .map(
+        (fund) => `
+            <div class="card no-rebalance">
+              <div class="card-content">
+                <div class="underline">  
+                  <h2>${fund.name}</h2>
+                </div>
+                <p>Nåværende fordeling: <strong>${fund.current_allocation.toFixed(2)}%</strong></p>
+                <p>Ønsket fordeling: <strong>${fund.goal_allocation}%</strong></p>
+                <p>Å handle for: <strong>${fund.to_buy}</strong>Kr</p>
+              </div>
+            </div>
+        `
+      )
+      .join("");
+
+    template = template
+      .replace("{{rows}}", rows)
+      .replace(
+        "{{totalValue}}",
+        total_value.toLocaleString("nb-NO", {
+          style: "currency",
+          currency: "NOK",
+        })
+      )
+      .replace("{{name}}", "Stein Petter")
+      .replace("{{new_money}}", new_money);
+
+    return template;
+  } catch (error) {
+    console.error("Feil ved lesing av e-postmal:", error);
+    return "";
+  }
+}

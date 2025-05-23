@@ -15,13 +15,15 @@ import {
 } from "../investments";
 import { Account, Holding, InvestmentSummary } from "../types";
 import { deleteAndCreateLimitOrders } from "../utils/barebitcoin";
-import { generateInvestmentSummaryEmail, sendEmail } from "../utils/resend";
+import { generateInvestmentSummaryEmail, generateKronRebalanceEmail, sendEmail } from "../utils/resend";
+import { calculateKronRebalance } from "../utils/stock";
 
 enum JobType {
   INVESTMENT_SUMMARY = "investment_summary",
   BB_LIMIT_ORDER = "bb_limit_order",
   KRON_SUMMARY = "kron_summary",
   VALUE_OVER_TIME = "value_over_time",
+  KRON_REBALANCE = "kron_rebalance",
   UNKNOWN = "unknown",
 }
 
@@ -148,6 +150,7 @@ const investmentSummaryJobDisabled = !process.env.INVESTMENT_SUMMARY_CRON || pro
 const limitOrderJobDisabled = !process.env.LIMIT_ORDER_CRON || process.env.LIMIT_ORDER_CRON === "";
 const kronSummaryJobDisabled = !process.env.KRON_SUMMARY_CRON || process.env.KRON_SUMMARY_CRON === "";
 const valueOverTimeJobDisabled = !process.env.VALUE_OVER_TIME_CRON || process.env.VALUE_OVER_TIME_CRON === "";
+const rebalanceKronJobDisabled = !process.env.REBALANCE_KRON_CRON || process.env.REBALANCE_KRON_CRON === "";
 
 var investmentSummaryJob = {} as CronJob;
 if(investmentSummaryJobDisabled) {
@@ -202,6 +205,37 @@ if(valueOverTimeJobDisabled) {
   );
 }
 
+async function calculateKronRebalanceJob() {
+  logNextFiretime(JobType.KRON_REBALANCE);
+
+  const account = getAccount(1)
+  if(account) {
+    const funds = await calculateKronRebalance(account, parseInt(process.env.NEW_MONEY as string))
+    generateKronRebalanceEmail(funds, funds.map(fund => fund.value).reduce((a,b) => a + b, 0), process.env.NEW_MONEY as string)
+    .then((email) => {
+      sendEmail({
+        from: `Portfolio <${process.env.FROM_EMAIL as string}>`,
+        to: [process.env.EMAIL as string],
+        subject: "Kron rebalansering",
+        html: email,
+      });
+    });
+  }
+}
+
+var rebalanceKronJob = {} as CronJob;
+if (rebalanceKronJobDisabled) {
+  console.log("REBALANCE_KRON_CRON is not set. Skipping job.");
+} else {
+  rebalanceKronJob = new CronJob(
+    process.env.REBALANCE_KRON_CRON as string,
+    calculateKronRebalanceJob,
+    null,
+    false,
+    "Europe/Oslo"
+  );
+}
+
 export function logNextFiretime(jobType: JobType) {
   switch (jobType) {
     case JobType.INVESTMENT_SUMMARY:
@@ -216,12 +250,16 @@ export function logNextFiretime(jobType: JobType) {
     case JobType.VALUE_OVER_TIME:
       console.log("Value over time job: ", valueOverTimeJob.nextDate());
       break;
+    case JobType.KRON_REBALANCE:
+      console.log("Kron rebalance job: ", rebalanceKronJob.nextDate());
+      break;
     case JobType.UNKNOWN:
     default:
       !investmentSummaryJobDisabled && console.log("Investment summary job: ", investmentSummaryJob.nextDate());
       !limitOrderJobDisabled && console.log("Limit order job: ", limitOrderJob.nextDate());
       !kronSummaryJobDisabled && console.log("Kron summary job: ", kronSummaryJob.nextDate());
       !valueOverTimeJobDisabled && console.log("Value over time job: ", valueOverTimeJob.nextDate());
+      !rebalanceKronJobDisabled && console.log("Kron rebalance job: ", rebalanceKronJob.nextDate());
       break;
   }
 }
@@ -231,6 +269,7 @@ export function startJobs(runImimediately = false) {
   !limitOrderJobDisabled && limitOrderJob.start();
   !kronSummaryJobDisabled && kronSummaryJob.start();
   !valueOverTimeJobDisabled && valueOverTimeJob.start();
+  !rebalanceKronJobDisabled && rebalanceKronJob.start();
   if (runImimediately) {
     //createSummaryMail();
     createLimitOrders();
