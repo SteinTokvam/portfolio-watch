@@ -1,11 +1,8 @@
 import { CronJob } from "cron";
 import {
-  deleteKronToken,
   fetchLastTotalValue,
   getAccount,
   getAccounts,
-  getKronToken,
-  setKronToken,
   setTotalValueFor,
   updateAccountTotalValue,
   updateLastTotalValue,
@@ -19,16 +16,12 @@ import {
 import { Account, Holding, InvestmentSummary } from "../types";
 import { deleteAndCreateLimitOrders } from "../utils/barebitcoin";
 import { generateInvestmentSummaryEmail, sendEmail } from "../utils/resend";
-import { sendAccessKeyMail } from "../utils/kron";
-import { addDays } from "../utils/functions";
-import { refreshKronToken } from "../refreshTokenService";
 
 enum JobType {
   INVESTMENT_SUMMARY = "investment_summary",
   BB_LIMIT_ORDER = "bb_limit_order",
   KRON_SUMMARY = "kron_summary",
   VALUE_OVER_TIME = "value_over_time",
-  KRON_REFRESH_TOKEN = "kron_refresh_token",
   UNKNOWN = "unknown",
 }
 
@@ -151,16 +144,10 @@ function createLimitOrders() {
   );
 }
 
-function refreshKronTokenJob() {
-  logNextFiretime(JobType.KRON_REFRESH_TOKEN);  
-  refreshKronToken(getKronToken().refresh_token);
-}
-
 const investmentSummaryJobDisabled = !process.env.INVESTMENT_SUMMARY_CRON || process.env.INVESTMENT_SUMMARY_CRON === "";
 const limitOrderJobDisabled = !process.env.LIMIT_ORDER_CRON || process.env.LIMIT_ORDER_CRON === "";
 const kronSummaryJobDisabled = !process.env.KRON_SUMMARY_CRON || process.env.KRON_SUMMARY_CRON === "";
 const valueOverTimeJobDisabled = !process.env.VALUE_OVER_TIME_CRON || process.env.VALUE_OVER_TIME_CRON === "";
-const refreshKronTokenJobDisabled = !process.env.KRON_REFRESH_TOKEN_CRON || process.env.KRON_REFRESH_TOKEN
 
 var investmentSummaryJob = {} as CronJob;
 if(investmentSummaryJobDisabled) {
@@ -215,19 +202,6 @@ if(valueOverTimeJobDisabled) {
   );
 }
 
-var refresh_kron_token_job = {} as CronJob;
-if(refreshKronTokenJobDisabled) {
-  console.log("KRON_REFRESH_TOKEN_CRON is not set. Skipping job.");
-} else {
-  refresh_kron_token_job = new CronJob(
-    process.env.KRON_REFRESH_TOKEN_CRON as string,
-    refreshKronTokenJob,
-    null,
-    false,
-    "Europe/Oslo"
-  );
-}
-
 export function logNextFiretime(jobType: JobType) {
   switch (jobType) {
     case JobType.INVESTMENT_SUMMARY:
@@ -242,19 +216,12 @@ export function logNextFiretime(jobType: JobType) {
     case JobType.VALUE_OVER_TIME:
       console.log("Value over time job: ", valueOverTimeJob.nextDate());
       break;
-    case JobType.KRON_REFRESH_TOKEN:
-      console.log(
-        "Kron refresh token job: ",
-        refresh_kron_token_job.nextDate()
-      );
-      break;
     case JobType.UNKNOWN:
     default:
       !investmentSummaryJobDisabled && console.log("Investment summary job: ", investmentSummaryJob.nextDate());
       !limitOrderJobDisabled && console.log("Limit order job: ", limitOrderJob.nextDate());
       !kronSummaryJobDisabled && console.log("Kron summary job: ", kronSummaryJob.nextDate());
       !valueOverTimeJobDisabled && console.log("Value over time job: ", valueOverTimeJob.nextDate());
-      !refreshKronTokenJobDisabled && console.log("Kron refresh token job: ", refresh_kron_token_job.nextDate());
       break;
   }
 }
@@ -264,7 +231,6 @@ export function startJobs(runImimediately = false) {
   !limitOrderJobDisabled && limitOrderJob.start();
   !kronSummaryJobDisabled && kronSummaryJob.start();
   !valueOverTimeJobDisabled && valueOverTimeJob.start();
-  !refreshKronTokenJobDisabled && refresh_kron_token_job.start();
   if (runImimediately) {
     //createSummaryMail();
     createLimitOrders();

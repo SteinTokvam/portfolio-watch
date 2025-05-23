@@ -96,16 +96,4 @@ export type ResendEmail = {
     html: string
 }
 
-export type KronToken = {
-    access_token: string,
-    refresh_token: string,
-    expires_in: number,
-    refresh_expires_in: number,
-    token_type: string,
-    id_token: string,
-    not_before_policy: number,
-    session_state: string,
-    scope: string,
-}
-
 export type KronInterval = '1W' | '1M' | '3M' | '6M' | 'year-to-date' | '1Y' | '3Y' | '5Y' | 'total'

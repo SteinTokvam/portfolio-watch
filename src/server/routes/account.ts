@@ -1,16 +1,16 @@
 import express from "express";
 import { createAccount, deleteAccount, fetchAccount, fetchAccounts, updateAccount } from "../account";
 
-const accountRouter = express.Router();
+const account_router = express.Router();
 
-accountRouter.get("/", fetchAccounts);
+account_router.get("/", fetchAccounts);
 
-accountRouter.get("/:account_id", fetchAccount);
+account_router.get("/:account_id", fetchAccount);
 
-accountRouter.post("/:account_id", updateAccount);
+account_router.post("/:account_id", updateAccount);
 
-accountRouter.delete("/:account_id", deleteAccount);
+account_router.delete("/:account_id", deleteAccount);
 
-accountRouter.put("/new", createAccount);
+account_router.put("/new", createAccount);
 
-export { accountRouter };
+export { account_router };

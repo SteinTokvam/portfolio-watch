@@ -89,6 +89,7 @@ function initDb() {
         access_token TEXT NOT NULL
         )`);
     db.exec(`DROP TABLE IF EXISTS value_over_time`);
+    db.exec(`DROP TABLE IF EXISTS kron_refresh_token`);
 }
 
 export function insertAccessInfo(
@@ -290,37 +291,4 @@ export function setTotalValueFor(account_id: number, total_value: number) {
     "INSERT INTO value_over_time (account_id, date, value) VALUES (?, ?, ?)"
   );
   stmt.run(account_id, new Date().toISOString(), total_value);
-}
-
-export function setKronToken(refresh_token: string, access_token: string) {
-  const stmt = db.prepare(
-    "INSERT INTO kron_refresh_token (refresh_token, access_token) VALUES (?, ?)"
-  );
-  stmt.run(refresh_token, access_token);
-  console.log("Kron token set");
-}
-
-export function deleteKronToken() {
-  const stmt = db.prepare("DELETE FROM kron_refresh_token");
-  stmt.run();
-  console.log("Kron token deleted");
-}
-
-export function updateToken(refresh_token: string, access_token: string) {
-  const oldToken = getKronToken();
-  const stmt = db.prepare(
-    "UPDATE kron_refresh_token SET refresh_token = ?, access_token = ? WHERE id = ?"
-  );
-  stmt.run(refresh_token, access_token, oldToken.id);
-}
-
-export function getKronToken() {
-  const stmt = db.prepare(
-    "SELECT id, access_token, refresh_token FROM kron_refresh_token"
-  );
-  return stmt.get() as {
-    id: number;
-    access_token: string;
-    refresh_token: string;
-  };
 }

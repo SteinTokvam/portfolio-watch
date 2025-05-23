@@ -3,7 +3,6 @@ import { fetchLastTotalValue, getEquityType } from "./db";
 import { Account, Holding, InvestmentSummary, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
-import { fetchKronHoldings, fetchKronTotalValue } from "./utils/kron";
 import { fetchStockAccountTotalValue } from "./utils/stock";
 import { fetchTangemTotalValue } from "./utils/btc";
 import { Console } from "console";
@@ -31,8 +30,8 @@ function table(input: any) {
 
 export async function calculateKronSummary(kronAccounts: Account[]) {
   const holdings: Promise<Holding[]>[] = [];
-  kronAccounts.forEach(async (account) => {
-    holdings.push(fetchKronHoldings(account));
+  kronAccounts.forEach(async (account) => { // TODO: hent manuelt i stedet for
+    // holdings.push(fetchKronHoldings(account));
   });
   const result = await Promise.all(holdings)
   
@@ -49,13 +48,13 @@ export async function calculateAccountValues(accounts: Account[]) {
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
     if (account.is_automatic) {
-      if (account.access_info?.account_key) {
-        all.push(
+      if (account.access_info?.account_key) { // TODO: Hent manuelt i stedet for
+        /* all.push(
           fetchKronTotalValue(
             account,
             "total"
           )
-        );
+        );*/ 
       } else if (
         account.access_info?.username &&
         account.access_info?.password

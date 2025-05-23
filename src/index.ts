@@ -5,33 +5,18 @@ import express from "express";
 dotenv.config();
 
 import { startJobs } from "./jobs/JobsService";
-import { fetchAllEquityTypes, fetchEquityType, updateEquityTypeAllocation } from "./server/equity_types";
-import { deleteTransaction, fetchTransactions } from "./server/transactions";
-import { setToken } from "./server/token";
-import { accountRouter } from "./server/routes/account";
+import { account_router } from "./server/routes/account";
+import { equity_type_router } from "./server/routes/equity_types";
+import { transactions_router } from "./server/routes/transactions";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const port = process.env.PORT || 3000;
 
-app.use('/accounts', accountRouter);
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.get("/equity_types", fetchAllEquityTypes);
-
-app.get("/equity_types/:name", fetchEquityType);
-
-app.post("/equity_types/:name/:allocation", updateEquityTypeAllocation);
-
-app.get("/transactions", fetchTransactions);
-
-app.delete("/transactions/:id", deleteTransaction)
-
-app.post("/token/set", setToken);
+app.use('/accounts', account_router);
+app.use('/equity_types', equity_type_router);
+app.use('/transactions', transactions_router);
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
