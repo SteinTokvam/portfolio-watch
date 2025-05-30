@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { deleteAccessInfo, deleteAccountInDb, getAccount, getAccounts, insertAccessInfo, insertAccountInDb, updateAccountDb } from "../db";
 import { AccessInfo } from "../types";
+import { deleteAccessInfo, deleteAccountInDb, getAccount, getAccounts, insertAccountInDb, updateAccountDb } from "../db/account";
 
 
 export function fetchAccounts(req: Request, res: Response) {

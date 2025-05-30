@@ -1,12 +1,9 @@
 import { CronJob } from "cron";
 import {
   fetchLastTotalValue,
-  getAccount,
-  getAccounts,
   setTotalValueFor,
-  updateAccountTotalValue,
   updateLastTotalValue,
-} from "../db";
+} from "../db/db";
 import {
   calculateAccountValues,
   calculateInvestmentSummary,
@@ -17,6 +14,7 @@ import { Account, Holding, InvestmentSummary } from "../types";
 import { deleteAndCreateLimitOrders } from "../utils/barebitcoin";
 import { generateInvestmentSummaryEmail, generateKronRebalanceEmail, sendEmail } from "../utils/resend";
 import { calculateKronRebalance } from "../utils/stock";
+import { getAccount, getAccounts, updateAccountTotalValue } from "../db/account";
 
 enum JobType {
   INVESTMENT_SUMMARY = "investment_summary",
@@ -25,10 +23,6 @@ enum JobType {
   VALUE_OVER_TIME = "value_over_time",
   KRON_REBALANCE = "kron_rebalance",
   UNKNOWN = "unknown",
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function generateKronSummaryEmail(holdings: Holding[], account: Account) {

@@ -1,4 +1,4 @@
-import { getAllEquityTypes, getEquityType, updateEquityType } from "../db";
+import { getAllEquityTypes, getEquityType, updateEquityType } from "../db/db";
 import { Request, Response } from 'express';
 
 

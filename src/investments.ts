@@ -1,5 +1,5 @@
 import { Transform } from "stream";
-import { fetchLastTotalValue, getEquityType } from "./db";
+import { fetchLastTotalValue, getEquityType } from "./db/db";
 import { Account, Holding, InvestmentSummary, TotalValue } from "./types";
 import { fetchBareBitcoinTotalValue } from "./utils/barebitcoin";
 import { fetchFundingPartnerTotalValue } from "./utils/fundingpartner";
@@ -48,14 +48,7 @@ export async function calculateAccountValues(accounts: Account[]) {
   accounts.forEach((account) => {
     console.log(`Fetching data for ${account.name}`);
     if (account.is_automatic) {
-      if (account.access_info?.account_key) { // TODO: Hent manuelt i stedet for
-        /* all.push(
-          fetchKronTotalValue(
-            account,
-            "total"
-          )
-        );*/ 
-      } else if (
+      if (
         account.access_info?.username &&
         account.access_info?.password
       ) {

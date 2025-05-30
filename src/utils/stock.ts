@@ -1,4 +1,5 @@
-import { getTransactionsForAccount, getEquityType, fetchKronHoldingGoalPercentage } from "../db";
+import { getTransactionsForAccount } from "../db/transaction";
+import { getEquityType, fetchKronHoldingGoalPercentage } from "../db/db";
 import { calculateAccountValues } from "../investments";
 import { Account, Holding, KronRebalance, TotalValue, Transaction } from "../types";
 
@@ -56,13 +57,13 @@ async function fetchAccountHoldings(account_id: number): Promise<Holding[]> {
     const totalYield = value - totalCost;
 
     return {
-      name: ticker_id,
+      name: transactions.filter(transaction => transaction.ticker_id === ticker_id)[0].name,
       accountKey: account_id,
       equityShare: total_shares,
       equityType: equity_type.toUpperCase(),
-      value,
+      value: parseFloat(value.toFixed(0)),
       goalPercentage: getEquityType(equity_type.toUpperCase()).wanted_allocation,
-      yield: totalYield,
+      yield: parseFloat(totalYield.toFixed(0)),
       isin: ticker_id,
     } as Holding;
   }));
@@ -72,13 +73,16 @@ export async function fetchStockAccountTotalValue(
   account: Account
 ): Promise<TotalValue> {
   return fetchAccountHoldings(account.id).then((holdings) => {
+    const market_value = Math.round(holdings.reduce((a: number, b: Holding) => a + b.value, 0));
+    const account_return = Math.round(holdings.reduce((a: number, b: Holding) => a + b.yield, 0))
     return {
       account_name: account.name,
       account_id: account.id,
-      market_value: holdings.reduce((a: number, b: Holding) => a + b.value, 0),
-      yield: 0,
-      return: parseFloat(holdings.reduce((a: number, b: Holding) => a + b.yield, 0).toFixed(2)),
+      market_value: market_value,
+      yield: parseFloat((account_return/market_value * 100).toFixed(2)),
+      return: account_return,
       equity_type: account.name === "Folkeinvest" ? "STOCK" : "FUND",
+      holdings: holdings,
     };
   });
 }

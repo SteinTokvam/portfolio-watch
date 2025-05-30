@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAccount, getAccounts } from "../db";
+import { getAccount, getAccounts } from "../db/account";
 import { calculateAccountValues } from "../investments";
 import { calculateKronRebalance } from "../utils/stock";
 
@@ -45,7 +45,7 @@ export async function totalValueForType(req: Request, res: Response) {
     }
     res.status(200).json({
         accounts: total_values,
-        totalValue: total_values.map(total => total.market_value).reduce((a,b) => a + b)
+        totalValue: Math.round(total_values.map(total => total.market_value).reduce((a,b) => a + b))
     })
 }
 

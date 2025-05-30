@@ -1,4 +1,5 @@
-import { getTransactionsForAccount, getEquityType } from "../db";
+import { getEquityType } from "../db/db";
+import { getTransactionsForAccount } from "../db/transaction";
 import { Holding, TotalValue, Transaction } from "../types";
 import { fetchPrice } from "./barebitcoin";
 

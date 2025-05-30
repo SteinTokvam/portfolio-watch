@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
-import { deleteTransactionById, getAllTransactions, getTransactionById, getTransactionsForAccount, insertTransactionInDb, updateTransactionInDb } from "../db";
+import { deleteTransactionById, getAllTransactions, getTransactionById, insertTransactionInDb, updateTransactionInDb } from "../db/transaction";
 import { Transaction } from "../types";
-import { fetchPrice } from "../utils/barebitcoin";
 
 export async function fetchTransactions(req: Request, res: Response) {
-  const price = await fetchPrice(true);
   
   const transactions = getAllTransactions()
   if(!transactions) {
